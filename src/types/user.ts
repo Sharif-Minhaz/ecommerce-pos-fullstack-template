@@ -9,6 +9,7 @@ export interface IUserBase {
 	is_ban: boolean;
 	userType: "user" | "vendor" | "admin";
 	password?: string;
+	image?: string;
 	shopName?: string;
 	shopDescription?: string;
 	shopImages?: string[];
