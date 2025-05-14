@@ -1,5 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 import { IProduct } from "@/types/product";
+import slugify from "slugify";
 
 const productSchema = new Schema<IProduct>(
 	{
@@ -16,6 +17,11 @@ const productSchema = new Schema<IProduct>(
 			trim: true,
 			minlength: [3, "Bengali title must be at least 3 characters long"],
 			maxlength: [200, "Bengali title cannot exceed 200 characters"],
+		},
+		slug: {
+			type: String,
+			unique: true,
+			lowercase: true,
 		},
 		description: {
 			type: String,
@@ -167,17 +173,6 @@ const productSchema = new Schema<IProduct>(
 			type: Boolean,
 			default: false,
 		},
-		rating: {
-			type: Number,
-			min: [0, "Rating cannot be less than 0"],
-			max: [5, "Rating cannot be more than 5"],
-			default: 0,
-		},
-		reviewCount: {
-			type: Number,
-			min: [0, "Review count cannot be negative"],
-			default: 0,
-		},
 		warranty: {
 			type: String,
 			trim: true,
@@ -248,6 +243,30 @@ productSchema.virtual("discountPercentage").get(function (this: IProduct) {
 
 productSchema.virtual("inStock").get(function (this: IProduct) {
 	return this.stock > 0;
+});
+
+// Create slug from title before saving
+productSchema.pre("save", async function (next) {
+	if (!this.isModified("title")) {
+		return next();
+	}
+
+	try {
+		let slug = slugify(this.title, { lower: true });
+		let count = 0;
+		const originalSlug = slug;
+
+		// Check if slug exists and append number if it does
+		while (await (this.constructor as mongoose.Model<IProduct>).findOne({ slug })) {
+			count++;
+			slug = `${originalSlug}-${count}`;
+		}
+
+		this.slug = slug;
+		next();
+	} catch (error) {
+		next(error as Error);
+	}
 });
 
 export const Product =

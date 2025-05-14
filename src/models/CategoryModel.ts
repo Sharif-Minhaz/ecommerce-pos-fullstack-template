@@ -1,23 +1,25 @@
 import mongoose, { Schema } from "mongoose";
+import slugify from "slugify";
 import { ICategory } from "@/types/category";
 
 const categorySchema = new Schema<ICategory>(
 	{
-		title: {
+		name: {
 			type: String,
-			required: [true, "Category title is required"],
+			required: [true, "Category name is required"],
 			trim: true,
 			unique: true,
-			minlength: [2, "Title must be at least 2 characters long"],
-			maxlength: [100, "Title cannot exceed 100 characters"],
 		},
-		titleBN: {
+		nameBN: {
 			type: String,
-			required: [true, "Category title in Bengali is required"],
+			required: [true, "Category name in Bengali is required"],
 			trim: true,
 			unique: true,
-			minlength: [2, "Bengali title must be at least 2 characters long"],
-			maxlength: [100, "Bengali title cannot exceed 100 characters"],
+		},
+		slug: {
+			type: String,
+			unique: true,
+			lowercase: true,
 		},
 		description: {
 			type: String,
@@ -46,6 +48,17 @@ const categorySchema = new Schema<ICategory>(
 		parent: {
 			type: Schema.Types.ObjectId,
 			ref: "Category",
+			default: null,
+		},
+		children: [
+			{
+				type: Schema.Types.ObjectId,
+				ref: "Category",
+			},
+		],
+		isActive: {
+			type: Boolean,
+			default: true,
 		},
 	},
 	{
@@ -53,9 +66,34 @@ const categorySchema = new Schema<ICategory>(
 	}
 );
 
-// Indexes
-categorySchema.index({ title: "text", titleBN: "text" });
+// Create slug from name before saving
+categorySchema.pre("save", async function (next) {
+	if (!this.isModified("name")) {
+		return next();
+	}
+
+	try {
+		let slug = slugify(this.name, { lower: true });
+		let count = 0;
+		const originalSlug = slug;
+
+		// Check if slug exists and append number if it does
+		while (await (this.constructor as mongoose.Model<ICategory>).findOne({ slug })) {
+			count++;
+			slug = `${originalSlug}-${count}`;
+		}
+
+		this.slug = slug;
+		next();
+	} catch (error) {
+		next(error as Error);
+	}
+});
+
+// Create indexes
+categorySchema.index({ slug: 1 });
 categorySchema.index({ parent: 1 });
+categorySchema.index({ isActive: 1 });
 
 export const Category =
 	mongoose.models.Category || mongoose.model<ICategory>("Category", categorySchema);

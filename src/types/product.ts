@@ -19,6 +19,7 @@ export type ProductUnit =
 export interface IProductBase {
 	title: string;
 	titleBN: string;
+	slug: string;
 	description: string;
 	descriptionBN: string;
 	gallery: string[];

@@ -1,23 +1,25 @@
 import mongoose, { Schema } from "mongoose";
+import slugify from "slugify";
 import { IBrand } from "@/types/brand";
 
 const brandSchema = new Schema<IBrand>(
 	{
-		title: {
+		name: {
 			type: String,
-			required: [true, "Brand title is required"],
+			required: [true, "Brand name is required"],
 			trim: true,
 			unique: true,
-			minlength: [2, "Title must be at least 2 characters long"],
-			maxlength: [100, "Title cannot exceed 100 characters"],
 		},
-		titleBN: {
+		nameBN: {
 			type: String,
-			required: [true, "Brand title in Bengali is required"],
+			required: [true, "Brand name in Bengali is required"],
 			trim: true,
 			unique: true,
-			minlength: [2, "Bengali title must be at least 2 characters long"],
-			maxlength: [100, "Bengali title cannot exceed 100 characters"],
+		},
+		slug: {
+			type: String,
+			unique: true,
+			lowercase: true,
 		},
 		description: {
 			type: String,
@@ -43,13 +45,48 @@ const brandSchema = new Schema<IBrand>(
 				message: "Image URL must be a valid URL",
 			},
 		},
+		products: [
+			{
+				type: Schema.Types.ObjectId,
+				ref: "Product",
+			},
+		],
+		isActive: {
+			type: Boolean,
+			default: true,
+		},
 	},
 	{
 		timestamps: true,
 	}
 );
 
-// Indexes
-brandSchema.index({ title: "text", titleBN: "text" });
+// Create slug from name before saving
+brandSchema.pre("save", async function (next) {
+	if (!this.isModified("name")) {
+		return next();
+	}
+
+	try {
+		let slug = slugify(this.name, { lower: true });
+		let count = 0;
+		const originalSlug = slug;
+
+		// Check if slug exists and append number if it does
+		while (await (this.constructor as mongoose.Model<IBrand>).findOne({ slug })) {
+			count++;
+			slug = `${originalSlug}-${count}`;
+		}
+
+		this.slug = slug;
+		next();
+	} catch (error) {
+		next(error as Error);
+	}
+});
+
+// Create indexes
+brandSchema.index({ slug: 1 });
+brandSchema.index({ isActive: 1 });
 
 export const Brand = mongoose.models.Brand || mongoose.model<IBrand>("Brand", brandSchema);
