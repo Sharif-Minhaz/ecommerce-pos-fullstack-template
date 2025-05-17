@@ -5,6 +5,7 @@ import { MongoDBAdapter } from "@auth/mongodb-adapter";
 import { User } from "@/models/UserModel";
 import { connectToDatabase } from "@/db";
 import { MongoClient } from "mongodb";
+import { Adapter } from "next-auth/adapters";
 
 if (!process.env.MONGODB_CONNECTION_STRING) {
 	throw new Error('Invalid/Missing environment variable: "MONGODB_CONNECTION_STRING"');
@@ -52,11 +53,12 @@ declare module "next-auth/jwt" {
 }
 
 export const authOptions: NextAuthOptions = {
-	adapter: MongoDBAdapter(clientPromise) as any, // Type assertion needed due to version mismatch
+	adapter: MongoDBAdapter(clientPromise) as Adapter,
 	providers: [
 		GoogleProvider({
 			clientId: process.env.GOOGLE_CLIENT_ID!,
 			clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+			allowDangerousEmailAccountLinking: true,
 		}),
 		CredentialsProvider({
 			name: "Credentials",
@@ -115,15 +117,41 @@ export const authOptions: NextAuthOptions = {
 				await connectToDatabase();
 				const existingUser = await User.findOne({ email: user.email });
 
-				if (!existingUser) {
-					await User.create({
-						name: user.name,
-						email: user.email,
-						image: user.image,
-						userType: "user",
-					});
+				if (existingUser) {
+					// If user exists but was created with credentials, prevent Google login
+					if (existingUser.userType === "vendor") {
+						return false;
+					}
+					// Update the existing user with Google info if needed
+					await User.findOneAndUpdate(
+						{ email: user.email },
+						{
+							$set: {
+								name: user.name,
+								image: user.image,
+							},
+						}
+					);
+					return true;
+				}
+
+				// Create new user for Google sign in
+				await User.create({
+					name: user.name,
+					email: user.email,
+					image: user.image,
+					userType: "user",
+				});
+				return true;
+			}
+
+			if (account?.provider === "credentials") {
+				const dbUser = await User.findOne({ email: user.email });
+				if (dbUser?.userType === "user") {
+					return false; // Prevent credentials login for Google users
 				}
 			}
+
 			return true;
 		},
 	},
@@ -133,6 +161,7 @@ export const authOptions: NextAuthOptions = {
 	},
 	session: {
 		strategy: "jwt" as const,
+		maxAge: 60 * 60 * 24 * 30, // 30 days
 	},
 	secret: process.env.NEXTAUTH_SECRET,
 };

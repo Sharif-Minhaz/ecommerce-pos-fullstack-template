@@ -4,7 +4,7 @@ import "./globals.css";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
-import { MainNav } from "@/components/main-nav";
+import { MainNav } from "@/components/shared/main-nav";
 import { LanguageProvider } from "@/components/providers/language-provider";
 
 const inter = Inter({

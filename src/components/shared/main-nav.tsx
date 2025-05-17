@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { useLanguage } from "./providers/language-provider";
-import { Button } from "./ui/button";
+import { useLanguage } from "@/components/providers/language-provider";
+import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
