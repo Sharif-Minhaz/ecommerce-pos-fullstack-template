@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 
 type Language = "en" | "bn";
 
@@ -12,7 +12,29 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
+	// Start with "en" as default on both server and client
 	const [language, setLanguage] = useState<Language>("en");
+	const [isHydrated, setIsHydrated] = useState(false);
+
+	// Load saved language after hydration
+	useEffect(() => {
+		const savedLanguage = localStorage.getItem("language") as Language;
+		if (savedLanguage) {
+			setLanguage(savedLanguage);
+		}
+		setIsHydrated(true);
+	}, []);
+
+	// Save language changes to localStorage
+	useEffect(() => {
+		if (isHydrated) {
+			localStorage.setItem("language", language);
+		}
+	}, [language, isHydrated]);
+
+	if (!isHydrated) {
+		return null;
+	}
 
 	return (
 		<LanguageContext.Provider value={{ language, setLanguage }}>

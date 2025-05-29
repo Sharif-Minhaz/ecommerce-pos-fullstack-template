@@ -1,9 +1,11 @@
-import { Button } from "@/components/ui/button";
+import Hero from "@/components/home/Hero";
+import TopMenu from "@/components/shared/TopMenu";
 
-export default function Home() {
+export default function HomePage() {
 	return (
 		<main className="">
-			<Button variant="destructive">Button</Button>
+			<TopMenu />
+			<Hero />
 		</main>
 	);
 }

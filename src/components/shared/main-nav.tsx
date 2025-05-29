@@ -14,37 +14,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { ShoppingCart, User } from "lucide-react";
 import Image from "next/image";
-
-const translations = {
-	en: {
-		wholesales: "Wholesales",
-		products: "Products",
-		search: "Search products...",
-		login: "Login",
-		viewProfile: "View Profile",
-		wishlist: "Wishlist",
-		logout: "Logout",
-	},
-	bn: {
-		wholesales: "হোলসেল",
-		products: "পণ্য",
-		search: "পণ্য খুঁজুন...",
-		login: "লগইন",
-		viewProfile: "প্রোফাইল দেখুন",
-		wishlist: "ইচ্ছাতালিকা",
-		logout: "লগআউট",
-	},
-};
+import { t } from "@/lib/translation";
 
 export function MainNav() {
 	const pathname = usePathname();
 	const { data: session } = useSession();
 	const { language, setLanguage } = useLanguage();
-	const t = translations[language];
 
 	return (
-		<header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-			<div className="container flex h-16 items-center">
+		<header className="px-4 sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+			<div className="container mx-auto flex h-16 items-center">
 				<div className="mr-4 flex">
 					<Link href="/" className="mr-6 flex items-center space-x-2">
 						<span className="font-bold">E-commerce POS</span>
@@ -58,7 +37,7 @@ export function MainNav() {
 									: "text-foreground/60"
 							}`}
 						>
-							{t.wholesales}
+							{t("wholesales", language)}
 						</Link>
 						<Link
 							href="/products"
@@ -66,7 +45,7 @@ export function MainNav() {
 								pathname === "/products" ? "text-foreground" : "text-foreground/60"
 							}`}
 						>
-							{t.products}
+							{t("products", language)}
 						</Link>
 					</nav>
 				</div>
@@ -74,7 +53,7 @@ export function MainNav() {
 					<div className="w-full flex-1 md:w-auto md:flex-none">
 						<Input
 							type="search"
-							placeholder={t.search}
+							placeholder={t("search", language)}
 							className="h-9 md:w-[300px] lg:w-[400px]"
 						/>
 					</div>
@@ -113,20 +92,20 @@ export function MainNav() {
 								</DropdownMenuTrigger>
 								<DropdownMenuContent align="end">
 									<DropdownMenuItem asChild>
-										<Link href="/profile">{t.viewProfile}</Link>
+										<Link href="/profile">{t("viewProfile", language)}</Link>
 									</DropdownMenuItem>
 									<DropdownMenuItem asChild>
-										<Link href="/wishlist">{t.wishlist}</Link>
+										<Link href="/wishlist">{t("wishlist", language)}</Link>
 									</DropdownMenuItem>
 									<DropdownMenuItem onClick={() => signOut()}>
-										{t.logout}
+										{t("logout", language)}
 									</DropdownMenuItem>
 								</DropdownMenuContent>
 							</DropdownMenu>
 						) : (
 							<Link href="/auth/login">
 								<Button variant="ghost" size="sm">
-									{t.login}
+									{t("login", language)}
 								</Button>
 							</Link>
 						)}

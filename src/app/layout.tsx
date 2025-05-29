@@ -6,6 +6,7 @@ import { AuthProvider } from "@/components/providers/auth-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { MainNav } from "@/components/shared/main-nav";
 import { LanguageProvider } from "@/components/providers/language-provider";
+import { Footer } from "@/components/shared/footer";
 
 const inter = Inter({
 	subsets: ["latin"],
@@ -25,7 +26,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 				<ThemeProvider
 					attribute="class"
 					defaultTheme="system"
-					enableSystem
+					// TODO: remember to change this to true
+					enableSystem={false}
 					disableTransitionOnChange
 				>
 					<AuthProvider>
@@ -33,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 							<div className="min-h-screen flex flex-col">
 								<MainNav />
 								<main className="flex-1">{children}</main>
+								<Footer />
 							</div>
 							<Toaster />
 						</LanguageProvider>
