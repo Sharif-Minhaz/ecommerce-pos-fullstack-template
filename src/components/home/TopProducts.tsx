@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/carousel";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag } from "lucide-react";
+import { ArrowRight, ShoppingBag } from "lucide-react";
+import Link from "next/link";
 
 const topProducts = [
 	{
@@ -234,8 +235,13 @@ const topProducts = [
 export default function TopProducts() {
 	return (
 		<section className="bg-blue-50 rounded-xl container mx-auto pb-4 mt-8">
-			<h2 className="text-xl dark:text-black font-semibold pt-6 p-4 mb-2">
-				Trending products
+			<h2 className="text-xl dark:text-black font-semibold pt-6 p-4 mb-2 flex items-center gap-2 justify-between">
+				Trending products{" "}
+				<Link href="/products">
+					<Button variant="default" size="sm" className="text-white">
+						View All <ArrowRight className="w-4 h-4" />
+					</Button>
+				</Link>
 			</h2>
 			<div className="relative">
 				<Carousel className="w-full">
