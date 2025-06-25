@@ -4,7 +4,7 @@ import TopMenu from "@/components/shared/TopMenu";
 
 export default function HomePage() {
 	return (
-		<main className="">
+		<main>
 			<TopMenu />
 			<Hero />
 			<Categories />

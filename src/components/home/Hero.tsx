@@ -69,14 +69,12 @@ export default function Hero() {
 				</div>
 
 				{/* Right side image */}
-				<div>
-					<Image
-						src={RightSideImage}
-						alt="Special Offer"
-						className="rounded-lg h-full"
-						priority
-					/>
-				</div>
+				<Image
+					src={RightSideImage}
+					alt="Special Offer"
+					className="rounded-lg w-full h-full object-cover"
+					priority
+				/>
 			</div>
 		</div>
 	);

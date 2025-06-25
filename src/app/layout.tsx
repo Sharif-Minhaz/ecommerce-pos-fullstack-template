@@ -26,9 +26,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 				<ThemeProvider
 					attribute="class"
 					defaultTheme="system"
-					// TODO: remember to change this to true
-					enableSystem={false}
-					disableTransitionOnChange
+					enableSystem={true}
+					storageKey="theme"
 				>
 					<AuthProvider>
 						<LanguageProvider>
