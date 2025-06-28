@@ -6,7 +6,11 @@ async function getProduct(slug: string) {
 		id: 12,
 		title: "Fuji Adapter",
 		titleBN: "ফুজি অ্যাডাপ্টার",
-		gallery: ["/products/fuji-adapter.webp"],
+		gallery: [
+			"/products/fuji-adapter.webp",
+			"/products/moulinex-genuine-blender.webp",
+			"/products/smartlock-wires.webp",
+		],
 		discountRate: 25,
 		price: 800,
 		salePrice: 600,

@@ -1,5 +1,4 @@
 import React from "react";
-import Image from "next/image";
 import {
 	Carousel,
 	CarouselContent,
@@ -7,9 +6,8 @@ import {
 	CarouselPrevious,
 	CarouselNext,
 } from "@/components/ui/carousel";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, ShoppingBag } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import Product from "../products/Product";
 

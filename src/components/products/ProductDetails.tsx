@@ -1,12 +1,14 @@
 "use client";
 
 import React from "react";
-import { Star } from "lucide-react";
+import { Heart, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
 import SquareMagnifier from "./SquareMagnifier";
 import { IProduct } from "@/types/product";
+import ProductReview from "./ProductReview";
+import { useCart } from "@/hooks/useCart";
 
 const mockReviews = [
 	{ user: "Alice", rating: 5, review: "Excellent product! Highly recommend." },
@@ -14,13 +16,21 @@ const mockReviews = [
 	{ user: "Charlie", rating: 3, review: "Average, does the job." },
 ];
 
-export default function ProductDetailsClient({ product }: { product: IProduct }) {
+export default function ProductDetails({ product }: { product: IProduct }) {
+	const { addToCart } = useCart();
 	// =============== state for quantity ================
 	const [quantity, setQuantity] = React.useState(1);
+	// =============== state for selected main image ================
+	const [selectedImage, setSelectedImage] = React.useState(product.gallery[0]);
 	// =============== average rating ================
 	const avgRating = mockReviews.length
 		? mockReviews.reduce((a, b) => a + b.rating, 0) / mockReviews.length
 		: 0;
+
+	// =============== handle gallery image click ================
+	const handleImageClick = (imageUrl: string) => {
+		setSelectedImage(imageUrl);
+	};
 
 	return (
 		<div className="container mx-auto py-8 px-2 max-w-5xl">
@@ -29,16 +39,21 @@ export default function ProductDetailsClient({ product }: { product: IProduct })
 				<div className="w-full md:w-1/2 flex flex-col gap-4">
 					<Card className="p-4 flex items-center justify-center min-h-[320px] min-w-[320px] max-w-full relative">
 						<div className="w-[320px] h-[320px] relative">
-							<SquareMagnifier src={product.gallery[0]} alt={product.title} />
+							<SquareMagnifier src={selectedImage} alt={product.title} />
 						</div>
 					</Card>
 					{/* =============== gallery thumbnails (if multiple) =============== */}
 					{product.gallery.length > 1 && (
-						<div className="flex gap-2 mt-2">
+						<div className="flex gap-2">
 							{product.gallery.map((img: string, idx: number) => (
 								<div
 									key={img}
-									className="w-16 h-16 border rounded overflow-hidden cursor-pointer"
+									className={`w-16 h-16 border-2 rounded overflow-hidden cursor-pointer transition-all duration-200 ${
+										selectedImage === img
+											? "border-primary shadow-md"
+											: "border-gray-200 hover:border-gray-300"
+									}`}
+									onClick={() => handleImageClick(img)}
 								>
 									<Image
 										src={img}
@@ -70,6 +85,10 @@ export default function ProductDetailsClient({ product }: { product: IProduct })
 								৳ {product.price.toLocaleString()}
 							</span>
 						)}
+					</div>
+					<div className="flex items-center gap-1 cursor-pointer">
+						<Heart size={18} />
+						<span className="text-sm text-gray-500">Add to Wishlist</span>
 					</div>
 					<div className="flex items-center gap-2">
 						{/* =============== rating stars =============== */}
@@ -125,20 +144,27 @@ export default function ProductDetailsClient({ product }: { product: IProduct })
 						>
 							+
 						</Button>
-						<Button className="ml-4" disabled={product.stock === 0}>
+						<Button
+							onClick={() => addToCart(product, quantity)}
+							className="ml-4"
+							disabled={product.stock === 0}
+						>
 							Add To Cart
 						</Button>
 					</div>
-					<div className="mt-4">
-						<h2 className="font-semibold mb-1">Description</h2>
-						<p className="text-gray-700 text-sm">{product.description}</p>
-					</div>
 				</div>
+			</div>
+			<div className="mt-4">
+				<h2 className="font-semibold mb-1">Description</h2>
+				<p className="text-gray-700 text-sm">{product.description}</p>
 			</div>
 			{/* =============== reviews section =============== */}
 			<div className="mt-10">
 				<h2 className="text-xl font-bold mb-4">Customer Reviews</h2>
-				<div className="flex flex-col gap-4">
+				{/* =============== customer review form =============== */}
+				<ProductReview />
+				{/* =============== customer reviews =============== */}
+				<div className="flex flex-col gap-4 mt-4">
 					{mockReviews.length === 0 && (
 						<div className="text-gray-500">No reviews yet.</div>
 					)}

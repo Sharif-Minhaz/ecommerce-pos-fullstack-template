@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { MainNav } from "@/components/shared/main-nav";
 import { LanguageProvider } from "@/components/providers/language-provider";
 import { Footer } from "@/components/shared/footer";
+import { CartContextProvider } from "@/components/providers/cart-provider";
 
 const inter = Inter({
 	subsets: ["latin"],
@@ -31,12 +32,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 				>
 					<AuthProvider>
 						<LanguageProvider>
-							<div className="min-h-screen flex flex-col">
-								<MainNav />
-								<main className="flex-1">{children}</main>
-								<Footer />
-							</div>
-							<Toaster />
+							<CartContextProvider>
+								<div className="min-h-screen flex flex-col">
+									<MainNav />
+									<main className="flex-1">{children}</main>
+									<Footer />
+								</div>
+								<Toaster />
+							</CartContextProvider>
 						</LanguageProvider>
 					</AuthProvider>
 				</ThemeProvider>

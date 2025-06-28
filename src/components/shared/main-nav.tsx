@@ -12,10 +12,11 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { ShoppingCart, User } from "lucide-react";
+import { User } from "lucide-react";
 import Image from "next/image";
 import { t } from "@/lib/translation";
 import { ThemeSwitcher } from "./theme-switcher";
+import { CartSheet } from "./CartSheet";
 
 export function MainNav() {
 	const pathname = usePathname();
@@ -68,12 +69,8 @@ export function MainNav() {
 						</Button>
 						{/* ========================= theme switcher ========================= */}
 						<ThemeSwitcher />
-						{/* ========================= cart ========================= */}
-						<Link href="/cart">
-							<Button variant="ghost" size="icon">
-								<ShoppingCart className="h-5 w-5" />
-							</Button>
-						</Link>
+						{/* ========================= cart sheet ========================= */}
+						<CartSheet />
 						{/* ========================= user dropdown ========================= */}
 						{session ? (
 							<DropdownMenu>

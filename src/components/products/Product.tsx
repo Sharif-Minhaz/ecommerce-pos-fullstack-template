@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { IProduct } from "@/types/product";
@@ -5,8 +7,11 @@ import { ShoppingBag } from "lucide-react";
 import Image from "next/image";
 import React from "react";
 import Link from "next/link";
+import { useCart } from "@/hooks/useCart";
 
 export default function Product({ product }: { product: IProduct }) {
+	const { addToCart } = useCart();
+
 	return (
 		<Link href={`/products/${product.slug}`}>
 			<Card className="relative h-full flex flex-col justify-between py-3">
@@ -42,7 +47,12 @@ export default function Product({ product }: { product: IProduct }) {
 					</div>
 				</CardContent>
 				<CardFooter className="-mt-2 px-3 pb-0">
-					<Button className="w-full" variant="default" size="sm">
+					<Button
+						onClick={() => addToCart(product, 1)}
+						className="w-full"
+						variant="default"
+						size="sm"
+					>
 						Add To Cart <ShoppingBag className="w-4 h-4" />
 					</Button>
 				</CardFooter>
