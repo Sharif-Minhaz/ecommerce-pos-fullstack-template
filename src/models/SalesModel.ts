@@ -209,11 +209,9 @@ const salesSchema = new Schema<ISales>(
 		user: {
 			type: Schema.Types.ObjectId,
 			ref: "User",
-			required: [true, "User is required"],
 		},
 		deliveryDetails: {
 			type: deliveryDetailsSchema,
-			required: [true, "Delivery details are required"],
 		},
 		location: {
 			type: locationSchema,
