@@ -29,28 +29,30 @@ interface ShopCardProps {
 export default function ShopCard({ shop }: ShopCardProps) {
 	return (
 		<Card className="h-full flex flex-col">
-			<CardContent className="flex flex-col items-center p-6">
+			<CardContent className="flex flex-col items-center px-6">
 				{/* =============== shop image =============== */}
-				<div className="w-24 h-24 relative mb-4 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+				<div className="w-full h-[200px] relative mb-4 rounded-sm overflow-hidden bg-gray-100 flex items-center justify-center">
 					{shop.shopImages && shop.shopImages.length > 0 ? (
 						<Image
 							src={shop.shopImages[0]}
-							alt={shop.shopName || "Shop"}
+							alt={shop.shopName || shop.name || "Shop"}
 							fill
-							sizes="96px"
+							sizes="100px"
 							style={{ objectFit: "cover" }}
 						/>
 					) : (
-						<Store className="w-12 h-12 text-gray-400" />
+						<Store className="w-[100px] h-[100px] text-gray-400" />
 					)}
 				</div>
 
 				{/* =============== shop name =============== */}
-				<h3 className="text-lg font-bold text-center mb-2 line-clamp-2">{shop.shopName}</h3>
+				<h3 className="text-lg font-bold text-center mb-2 line-clamp-2">
+					{shop.shopName || shop.name || "Unnamed Shop"}
+				</h3>
 
 				{/* =============== shop description =============== */}
 				<p className="text-sm text-muted-foreground text-center line-clamp-3 mb-4">
-					{shop.shopDescription}
+					{shop.shopDescription || "No description available"}
 				</p>
 
 				{/* =============== shop rating =============== */}
@@ -68,7 +70,10 @@ export default function ShopCard({ shop }: ShopCardProps) {
 			</CardContent>
 
 			<CardFooter className="mt-auto p-6 pt-0">
-				<Link href={`/shops/${shop.registrationNumber}`} className="w-full">
+				<Link
+					href={shop.registrationNumber ? `/shops/${shop.registrationNumber}` : `/shops/${shop._id}`}
+					className="w-full"
+				>
 					<Button className="w-full" variant="default">
 						View Shop
 					</Button>

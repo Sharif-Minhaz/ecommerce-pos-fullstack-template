@@ -32,14 +32,12 @@ export function MainNav() {
 					</Link>
 					<nav className="flex items-center space-x-6 text-sm font-medium">
 						<Link
-							href="/wholesales"
+							href="/shops"
 							className={`transition-colors hover:text-foreground/80 ${
-								pathname === "/wholesales"
-									? "text-foreground"
-									: "text-foreground/60"
+								pathname === "/shops" ? "text-foreground" : "text-foreground/60"
 							}`}
 						>
-							{t("wholesales", language)}
+							{t("shops", language)}
 						</Link>
 						<Link
 							href="/products"
@@ -60,11 +58,7 @@ export function MainNav() {
 						/>
 					</div>
 					<div className="flex items-center space-x-4">
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => setLanguage(language === "en" ? "bn" : "en")}
-						>
+						<Button variant="ghost" size="sm" onClick={() => setLanguage(language === "en" ? "bn" : "en")}>
 							{language === "en" ? "বাং" : "EN"}
 						</Button>
 						{/* ========================= theme switcher ========================= */}
@@ -75,11 +69,7 @@ export function MainNav() {
 						{session ? (
 							<DropdownMenu>
 								<DropdownMenuTrigger asChild>
-									<Button
-										variant="ghost"
-										size="icon"
-										className="relative h-8 w-8 rounded-full"
-									>
+									<Button variant="ghost" size="icon" className="relative h-8 w-8 rounded-full">
 										{session.user?.image ? (
 											<Image
 												src={session.user.image}
@@ -96,6 +86,11 @@ export function MainNav() {
 									<DropdownMenuItem asChild>
 										<Link href="/profile">{t("viewProfile", language)}</Link>
 									</DropdownMenuItem>
+									{session.user?.userType === "vendor" && (
+										<DropdownMenuItem asChild>
+											<Link href="/my-shop">My Shop</Link>
+										</DropdownMenuItem>
+									)}
 									<DropdownMenuItem asChild>
 										<Link href="/wishlist">{t("wishlist", language)}</Link>
 									</DropdownMenuItem>

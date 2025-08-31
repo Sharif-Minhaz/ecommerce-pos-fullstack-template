@@ -35,9 +35,6 @@ const userSchema = new Schema<IUser>(
 		},
 		password: {
 			type: String,
-			required: function (this: IUser) {
-				return this.userType !== "user";
-			},
 			minlength: [6, "Password must be at least 6 characters long"],
 			select: false,
 		},
@@ -50,18 +47,12 @@ const userSchema = new Schema<IUser>(
 		// Vendor specific fields
 		shopName: {
 			type: String,
-			required: function (this: IUser) {
-				return this.userType === "vendor";
-			},
 			trim: true,
 			minlength: [2, "Shop name must be at least 2 characters long"],
 			maxlength: [100, "Shop name cannot exceed 100 characters"],
 		},
 		shopDescription: {
 			type: String,
-			required: function (this: IUser) {
-				return this.userType === "vendor";
-			},
 			trim: true,
 			minlength: [10, "Shop description must be at least 10 characters long"],
 			maxlength: [1000, "Shop description cannot exceed 1000 characters"],
@@ -69,22 +60,10 @@ const userSchema = new Schema<IUser>(
 		shopImages: [
 			{
 				type: String,
-				required: function (this: IUser) {
-					return this.userType === "vendor";
-				},
-				validate: {
-					validator: function (v: string) {
-						return /^https?:\/\/.+/.test(v);
-					},
-					message: "Shop images must be valid URLs",
-				},
 			},
 		],
 		registrationNumber: {
 			type: String,
-			required: function (this: IUser) {
-				return this.userType === "vendor";
-			},
 			unique: true,
 			trim: true,
 		},

@@ -100,8 +100,20 @@ export const authOptions: NextAuthOptions = {
 	callbacks: {
 		async jwt({ token, user }) {
 			if (user) {
+				// Initial sign-in: user object is available
 				token.id = user.id;
 				token.userType = user.userType;
+			} else if (token.email) {
+				// Subsequent requests: fetch user from database to get userType
+				try {
+					await connectToDatabase();
+					const dbUser = await User.findOne({ email: token.email }).select("userType");
+					if (dbUser) {
+						token.userType = dbUser.userType;
+					}
+				} catch (error) {
+					console.error("Error fetching user in JWT callback:", error);
+				}
 			}
 			return token;
 		},
