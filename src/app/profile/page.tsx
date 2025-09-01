@@ -190,7 +190,7 @@ export default function ProfilePage() {
 				{/* Vendor Shop Link */}
 				{profile.userType === "vendor" && (
 					<Card className="border-primary/20 bg-primary/5">
-						<CardContent className="pt-6">
+						<CardContent>
 							<div className="flex items-center justify-between">
 								<div className="flex items-center space-x-3">
 									<Store className="h-6 w-6 text-primary" />

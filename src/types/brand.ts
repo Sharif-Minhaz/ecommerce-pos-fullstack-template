@@ -1,5 +1,4 @@
 import { Document, PopulatedDoc } from "mongoose";
-import { IProduct } from "./product";
 
 // Base interface without populated fields
 export interface IBrandBase {
@@ -10,13 +9,15 @@ export interface IBrandBase {
 	descriptionBN?: string;
 	image?: string;
 	isActive: boolean;
+	imageKey?: string;
 	createdAt: Date;
 	updatedAt: Date;
+	createdBy: Document["_id"];
 }
 
 // Interface for when fields are populated
 export interface IBrandPopulated extends IBrandBase {
-	products: IProduct[];
+	products: Document[]; // =============== using Document[] to avoid circular reference with IProduct ================
 }
 
 // Interface for when fields are not populated
@@ -27,5 +28,5 @@ export interface IBrandUnpopulated extends IBrandBase {
 // Main interface that can handle both populated and unpopulated states
 export interface IBrand extends Document, IBrandUnpopulated {
 	// This allows the fields to be populated
-	products: PopulatedDoc<IProduct & Document>[];
+	products: PopulatedDoc<Document>[]; // =============== using Document to avoid circular reference with IProduct ================
 }

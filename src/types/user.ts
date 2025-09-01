@@ -16,6 +16,7 @@ export interface IUserBase {
 	registrationNumber?: string;
 	createdAt: Date;
 	updatedAt: Date;
+	createdBy: string;
 }
 
 // Interface for when fields are populated

@@ -10,8 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Store, Edit3, Save, X, Image as ImageIcon, Trash2 } from "lucide-react";
+import { Loader2, Store, Edit3, Save, X, Image as ImageIcon, Trash2, Package, Tag, FolderOpen } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
+import FloatingActionButton from "@/components/shared/FloatingActionButton";
 
 interface VendorShop {
 	_id: string;
@@ -183,8 +185,68 @@ export default function MyShopPage() {
 	return (
 		<div className="container mx-auto px-4 py-8 max-w-6xl">
 			<div className="mb-8">
-				<h1 className="text-3xl font-bold tracking-tight">My Shop</h1>
-				<p className="text-muted-foreground">Manage your shop information and images</p>
+				<div className="flex justify-between items-center">
+					<div>
+						<h1 className="text-3xl font-bold tracking-tight">My Shop</h1>
+						<p className="text-muted-foreground">Manage your shop information and images</p>
+					</div>
+					<div className="flex gap-2">
+						<Button asChild>
+							<Link href="/my-shop/products">
+								<Package className="h-4 w-4 mr-2" />
+								Products
+							</Link>
+						</Button>
+						<Button asChild variant="outline">
+							<Link href="/my-shop/brands">
+								<Tag className="h-4 w-4 mr-2" />
+								Brands
+							</Link>
+						</Button>
+						<Button asChild variant="outline">
+							<Link href="/my-shop/categories">
+								<FolderOpen className="h-4 w-4 mr-2" />
+								Categories
+							</Link>
+						</Button>
+					</div>
+				</div>
+			</div>
+
+			{/* =============== quick navigation section ================ */}
+			<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+				<Card className="p-6 text-center hover:shadow-md transition-shadow">
+					<Package className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+					<h3 className="text-lg font-semibold mb-2">Products</h3>
+					<p className="text-sm text-gray-600 mb-4">Manage your product inventory</p>
+					<Link href="/my-shop/products">
+						<Button size="sm" className="w-full">
+							View Products
+						</Button>
+					</Link>
+				</Card>
+
+				<Card className="p-6 text-center hover:shadow-md transition-shadow">
+					<Tag className="h-8 w-8 mx-auto mb-2 text-green-600" />
+					<h3 className="text-lg font-semibold mb-2">Brands</h3>
+					<p className="text-sm text-gray-600 mb-4">Manage your brand collection</p>
+					<Link href="/my-shop/brands">
+						<Button size="sm" variant="outline" className="w-full">
+							View Brands
+						</Button>
+					</Link>
+				</Card>
+
+				<Card className="p-6 text-center hover:shadow-md transition-shadow">
+					<FolderOpen className="h-8 w-8 mx-auto mb-2 text-purple-600" />
+					<h3 className="text-lg font-semibold mb-2">Categories</h3>
+					<p className="text-sm text-gray-600 mb-4">Organize product categories</p>
+					<Link href="/my-shop/categories">
+						<Button size="sm" variant="outline" className="w-full">
+							View Categories
+						</Button>
+					</Link>
+				</Card>
 			</div>
 
 			<div className="grid gap-6">
@@ -361,6 +423,9 @@ export default function MyShopPage() {
 					</div>
 				</form>
 			</div>
+
+			{/* =============== floating action button for quick product creation =============== */}
+			<FloatingActionButton />
 		</div>
 	);
 }

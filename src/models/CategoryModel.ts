@@ -45,6 +45,9 @@ const categorySchema = new Schema<ICategory>(
 				message: "Image URL must be a valid URL",
 			},
 		},
+		imageKey: {
+			type: String,
+		},
 		parent: {
 			type: Schema.Types.ObjectId,
 			ref: "Category",
@@ -60,6 +63,11 @@ const categorySchema = new Schema<ICategory>(
 			type: Boolean,
 			default: true,
 		},
+		createdBy: {
+			type: Schema.Types.ObjectId,
+			ref: "User",
+			required: true,
+		},
 	},
 	{
 		timestamps: true,
@@ -73,7 +81,8 @@ categorySchema.pre("save", async function (next) {
 	}
 
 	try {
-		let slug = slugify(this.name, { lower: true });
+		const categoryDoc = this as unknown as mongoose.Document & { name: string; slug: string };
+		let slug = slugify(categoryDoc.name, { lower: true });
 		let count = 0;
 		const originalSlug = slug;
 
@@ -83,7 +92,7 @@ categorySchema.pre("save", async function (next) {
 			slug = `${originalSlug}-${count}`;
 		}
 
-		this.slug = slug;
+		categoryDoc.slug = slug;
 		next();
 	} catch (error) {
 		next(error as Error);
@@ -95,5 +104,4 @@ categorySchema.index({ slug: 1 });
 categorySchema.index({ parent: 1 });
 categorySchema.index({ isActive: 1 });
 
-export const Category =
-	mongoose.models.Category || mongoose.model<ICategory>("Category", categorySchema);
+export const Category = mongoose.models.Category || mongoose.model<ICategory>("Category", categorySchema);

@@ -37,9 +37,11 @@ export class CloudinaryService {
 			const bytes = await file.arrayBuffer();
 			const buffer = Buffer.from(bytes);
 
+			console.log("options.folder", options.folder);
+
 			// Set default options - simplified without problematic parameters
 			const uploadOptions = {
-				folder: options.folder || DEFAULT_FOLDER || "uploads",
+				folder: options.folder ? `${DEFAULT_FOLDER}/${options.folder}` : DEFAULT_FOLDER,
 				resource_type: options.resource_type || "auto",
 			};
 
@@ -102,6 +104,24 @@ export class CloudinaryService {
 	}
 
 	/**
+	 * Delete a file from Cloudinary
+	 * @param publicId - The public ID of the file to delete
+	 * @returns Promise with deletion result
+	 */
+	static async deleteFile(publicId: string): Promise<{ result: string }> {
+		try {
+			if (!this.isConfigured()) {
+				throw new Error("Cloudinary is not properly configured");
+			}
+
+			const result = await cloudinary.uploader.destroy(publicId);
+			return result;
+		} catch (error) {
+			throw new Error(`File deletion failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+		}
+	}
+
+	/**
 	 * Get Cloudinary configuration status
 	 * @returns Object with configuration status
 	 */
@@ -121,42 +141,33 @@ export class CloudinaryService {
 /**
  * Upload a shop image
  * @param file - The image file
- * @param shopId - The shop ID for folder organization
  * @returns Promise with upload result
  */
-export async function uploadShopImage(file: File, shopId?: string): Promise<CloudinaryUploadResult> {
-	const folder = shopId ? `${DEFAULT_FOLDER}/shops/${shopId}` : `${DEFAULT_FOLDER}/shops`;
-
+export async function uploadShopImage(file: File): Promise<CloudinaryUploadResult> {
 	return CloudinaryService.uploadImage(file, {
-		folder,
+		folder: "shops",
 	});
 }
 
 /**
  * Upload a product image
  * @param file - The image file
- * @param productId - The product ID for folder organization
  * @returns Promise with upload result
  */
-export async function uploadProductImage(file: File, productId?: string): Promise<CloudinaryUploadResult> {
-	const folder = productId ? `${DEFAULT_FOLDER}/products/${productId}` : `${DEFAULT_FOLDER}/products`;
-
+export async function uploadProductImage(file: File): Promise<CloudinaryUploadResult> {
 	return CloudinaryService.uploadImage(file, {
-		folder,
+		folder: "products",
 	});
 }
 
 /**
  * Upload a user profile image
  * @param file - The image file
- * @param userId - The user ID for folder organization
  * @returns Promise with upload result
  */
-export async function uploadProfileImage(file: File, userId?: string): Promise<CloudinaryUploadResult> {
-	const folder = userId ? `${DEFAULT_FOLDER}/profiles/${userId}` : `${DEFAULT_FOLDER}/profiles`;
-
+export async function uploadProfileImage(file: File): Promise<CloudinaryUploadResult> {
 	return CloudinaryService.uploadImage(file, {
-		folder,
+		folder: "profiles",
 	});
 }
 

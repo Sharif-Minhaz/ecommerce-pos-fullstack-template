@@ -32,15 +32,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 		}
 	}, [language, isHydrated]);
 
-	if (!isHydrated) {
-		return null;
-	}
-
-	return (
-		<LanguageContext.Provider value={{ language, setLanguage }}>
-			{children}
-		</LanguageContext.Provider>
-	);
+	// =============== always render children to prevent hydration mismatch ================
+	return <LanguageContext.Provider value={{ language, setLanguage }}>{children}</LanguageContext.Provider>;
 }
 
 export function useLanguage() {

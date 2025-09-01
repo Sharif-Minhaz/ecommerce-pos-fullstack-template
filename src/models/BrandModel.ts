@@ -45,6 +45,9 @@ const brandSchema = new Schema<IBrand>(
 				message: "Image URL must be a valid URL",
 			},
 		},
+		imageKey: {
+			type: String,
+		},
 		products: [
 			{
 				type: Schema.Types.ObjectId,
@@ -54,6 +57,11 @@ const brandSchema = new Schema<IBrand>(
 		isActive: {
 			type: Boolean,
 			default: true,
+		},
+		createdBy: {
+			type: Schema.Types.ObjectId,
+			ref: "User",
+			required: true,
 		},
 	},
 	{
@@ -68,7 +76,8 @@ brandSchema.pre("save", async function (next) {
 	}
 
 	try {
-		let slug = slugify(this.name, { lower: true });
+		const brandDoc = this as unknown as mongoose.Document & { name: string; slug: string };
+		let slug = slugify(brandDoc.name, { lower: true });
 		let count = 0;
 		const originalSlug = slug;
 
@@ -78,7 +87,7 @@ brandSchema.pre("save", async function (next) {
 			slug = `${originalSlug}-${count}`;
 		}
 
-		this.slug = slug;
+		brandDoc.slug = slug;
 		next();
 	} catch (error) {
 		next(error as Error);

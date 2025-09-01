@@ -8,6 +8,7 @@ import { MainNav } from "@/components/shared/main-nav";
 import { LanguageProvider } from "@/components/providers/language-provider";
 import { Footer } from "@/components/shared/footer";
 import { CartContextProvider } from "@/components/providers/cart-provider";
+import FloatingActionButton from "@/components/shared/FloatingActionButton";
 
 const inter = Inter({
 	subsets: ["latin"],
@@ -24,12 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<body className={`${inter.variable} font-sans`}>
-				<ThemeProvider
-					attribute="class"
-					defaultTheme="system"
-					enableSystem={true}
-					storageKey="theme"
-				>
+				<ThemeProvider attribute="class" defaultTheme="system" enableSystem={true} storageKey="theme">
 					<AuthProvider>
 						<LanguageProvider>
 							<CartContextProvider>
@@ -38,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 									<main className="flex-1">{children}</main>
 									<Footer />
 								</div>
+								<FloatingActionButton />
 								<Toaster />
 							</CartContextProvider>
 						</LanguageProvider>

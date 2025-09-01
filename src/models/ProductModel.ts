@@ -71,28 +71,11 @@ const productSchema = new Schema<IProduct>(
 		salePrice: {
 			type: Number,
 			min: [0, "Sale price cannot be negative"],
-			validate: {
-				validator: function (this: IProduct, v: number) {
-					return v <= this.price;
-				},
-				message: "Sale price cannot be greater than regular price",
-			},
 		},
 		discountRate: {
 			type: Number,
 			min: [0, "Discount rate cannot be negative"],
 			max: [100, "Discount rate cannot exceed 100%"],
-			validate: {
-				validator: function (this: IProduct, v: number) {
-					if (this.salePrice) {
-						const calculatedDiscount =
-							((this.price - this.salePrice) / this.price) * 100;
-						return Math.abs(v - calculatedDiscount) < 0.01; // allow small floating point differences
-					}
-					return true;
-				},
-				message: "Discount rate must match the difference between price and sale price",
-			},
 		},
 		highlights: {
 			type: String,
@@ -231,10 +214,10 @@ const productSchema = new Schema<IProduct>(
 	}
 );
 
+// =============== text search index for product search functionality ================
 productSchema.index({ title: "text", titleBN: "text", description: "text", descriptionBN: "text" });
+// =============== compound index for filtering products by category, brand, and vendor ================
 productSchema.index({ category: 1, brand: 1, vendor: 1 });
-productSchema.index({ sku: 1 }, { unique: true });
-productSchema.index({ barcode: 1 }, { sparse: true });
 
 productSchema.virtual("discountPercentage").get(function (this: IProduct) {
 	if (!this.salePrice || !this.price) return 0;
@@ -269,5 +252,4 @@ productSchema.pre("save", async function (next) {
 	}
 });
 
-export const Product =
-	mongoose.models.Product || mongoose.model<IProduct>("Product", productSchema);
+export const Product = mongoose.models.Product || mongoose.model<IProduct>("Product", productSchema);

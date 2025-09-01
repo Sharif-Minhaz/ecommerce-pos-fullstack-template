@@ -4,6 +4,7 @@ import Hero from "@/components/home/Hero";
 import Offers from "@/components/home/Offers";
 import TopProducts from "@/components/home/TopProducts";
 import TopMenu from "@/components/shared/TopMenu";
+import Brands from "@/components/home/Brands";
 
 export default function HomePage() {
 	return (
@@ -11,6 +12,7 @@ export default function HomePage() {
 			<TopMenu />
 			<Hero />
 			<Categories />
+			<Brands />
 			<Offers />
 			<TopProducts />
 			<Banner />

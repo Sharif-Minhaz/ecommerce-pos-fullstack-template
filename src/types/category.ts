@@ -9,8 +9,10 @@ export interface ICategoryBase {
 	descriptionBN?: string;
 	image?: string;
 	isActive: boolean;
+	imageKey?: string;
 	createdAt: Date;
 	updatedAt: Date;
+	createdBy: Document["_id"];
 }
 
 // Interface for when fields are populated
