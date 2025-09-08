@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,12 +9,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface ProductReviewProps {
 	onSubmit?: (data: { rating: number; review: string }) => void;
+	initialRating?: number;
+	initialReview?: string;
+	submitLabel?: string;
 }
 
-export default function ProductReview({ onSubmit }: ProductReviewProps) {
-	const [rating, setRating] = useState(0);
+export default function ProductReview({
+	onSubmit,
+	initialRating = 0,
+	initialReview = "",
+	submitLabel,
+}: ProductReviewProps) {
+	const [rating, setRating] = useState(initialRating);
 	const [hoverRating, setHoverRating] = useState(0);
-	const [review, setReview] = useState("");
+	const [review, setReview] = useState(initialReview);
+
+	useEffect(() => {
+		setRating(initialRating || 0);
+		setReview(initialReview || "");
+	}, [initialRating, initialReview]);
 
 	// =============== handle star click to set rating ================
 	const handleStarClick = (starValue: number) => {
@@ -53,8 +66,7 @@ export default function ProductReview({ onSubmit }: ProductReviewProps) {
 		onSubmit?.(reviewData);
 
 		// =============== reset form after submission ================
-		setRating(0);
-		setReview("");
+		// leave state as-is; parent controls for edit vs create
 	};
 
 	return (
@@ -112,7 +124,7 @@ export default function ProductReview({ onSubmit }: ProductReviewProps) {
 
 					{/* =============== submit button ================ */}
 					<Button type="submit" className="w-full">
-						Submit Review
+						{submitLabel ?? "Submit Review"}
 					</Button>
 				</form>
 			</CardContent>

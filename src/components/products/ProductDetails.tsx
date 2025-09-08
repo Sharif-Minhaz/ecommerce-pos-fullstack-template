@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Heart, Star } from "lucide-react";
+import { Heart, Star, Trash2, Loader2, Edit3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
@@ -9,27 +9,111 @@ import SquareMagnifier from "./SquareMagnifier";
 import { IProduct } from "@/types/product";
 import ProductReview from "./ProductReview";
 import { useCart } from "@/hooks/useCart";
+import { listProductReviews, upsertReview, deleteOwnReview } from "@/app/actions/review";
+import { useSession } from "next-auth/react";
 
-const mockReviews = [
-	{ user: "Alice", rating: 5, review: "Excellent product! Highly recommend." },
-	{ user: "Bob", rating: 4, review: "Works well, but packaging could be better." },
-	{ user: "Charlie", rating: 3, review: "Average, does the job." },
-];
+// local view type for reviews
+type ReviewView = { _id: string; user?: { _id?: string; name?: string }; rating: number; review: string };
+
+function getCategoryNameSafe(product: IProduct): string {
+	return (product.category as unknown as { name?: string })?.name ?? "";
+}
+
+function getBrandNameSafe(product: IProduct): string {
+	return (product.brand as unknown as { name?: string })?.name ?? "";
+}
 
 export default function ProductDetails({ product }: { product: IProduct }) {
 	const { addToCart } = useCart();
+	const { data: session } = useSession();
 	// =============== state for quantity ================
 	const [quantity, setQuantity] = React.useState(1);
 	// =============== state for selected main image ================
 	const [selectedImage, setSelectedImage] = React.useState(product.gallery[0]);
-	// =============== average rating ================
-	const avgRating = mockReviews.length
-		? mockReviews.reduce((a, b) => a + b.rating, 0) / mockReviews.length
-		: 0;
+	// =============== reviews state ================
+	const [reviews, setReviews] = React.useState<ReviewView[]>([]);
+	const [loadingReviews, setLoadingReviews] = React.useState(true);
+	const [, setSubmitting] = React.useState(false);
+	const [isEditing, setIsEditing] = React.useState(false);
+	const [ownReview, setOwnReview] = React.useState<{ rating: number; review: string } | null>(null);
+
+	const avgRating = reviews.length ? reviews.reduce((a, b) => a + b.rating, 0) / reviews.length : 0;
 
 	// =============== handle gallery image click ================
 	const handleImageClick = (imageUrl: string) => {
 		setSelectedImage(imageUrl);
+	};
+
+	// =============== load reviews ================
+	React.useEffect(() => {
+		let mounted = true;
+		(async () => {
+			try {
+				setLoadingReviews(true);
+				const res = await listProductReviews(
+					product._id?.toString?.() || (product as unknown as { id: string }).id
+				);
+				if (mounted && res.success) {
+					const list = (res.reviews || []) as ReviewView[];
+					setReviews(list);
+					const me = session?.user?.id;
+					if (me) {
+						const mine = list.find((r) => r?.user?._id === me);
+						setOwnReview(mine ? { rating: mine.rating, review: mine.review } : null);
+					} else {
+						setOwnReview(null);
+					}
+				}
+			} finally {
+				if (mounted) setLoadingReviews(false);
+			}
+		})();
+		return () => {
+			mounted = false;
+		};
+	}, [product, session?.user?.id]);
+
+	// =============== submit review ================
+	const handleSubmitReview = async (data: { rating: number; review: string }) => {
+		try {
+			setSubmitting(true);
+			const fd = new FormData();
+			fd.set("rating", String(data.rating));
+			fd.set("review", data.review);
+			const res = await upsertReview(product._id?.toString?.() || (product as unknown as { id: string }).id, fd);
+			if (res.success) {
+				const list = await listProductReviews(
+					product._id?.toString?.() || (product as unknown as { id: string }).id
+				);
+				if (list.success) {
+					const newList = (list.reviews || []) as ReviewView[];
+					setReviews(newList);
+					const me = session?.user?.id;
+					if (me) {
+						const mine = newList.find((r) => r?.user?._id === me);
+						setOwnReview(mine ? { rating: mine.rating, review: mine.review } : null);
+					}
+					setIsEditing(false);
+				}
+			}
+		} finally {
+			setSubmitting(false);
+		}
+	};
+
+	// =============== delete own review ================
+	const handleDeleteOwnReview = async () => {
+		const res = await deleteOwnReview(product._id?.toString?.() || (product as unknown as { id: string }).id);
+		if (res.success) {
+			const list = await listProductReviews(
+				product._id?.toString?.() || (product as unknown as { id: string }).id
+			);
+			if (list.success) {
+				setReviews((list.reviews || []) as ReviewView[]);
+				setOwnReview(null);
+				setIsEditing(false);
+			}
+		}
 	};
 
 	return (
@@ -77,8 +161,7 @@ export default function ProductDetails({ product }: { product: IProduct }) {
 							</span>
 						)}
 						<span className="text-lg font-bold text-primary">
-							৳{" "}
-							{product.salePrice?.toLocaleString() ?? product.price.toLocaleString()}
+							৳ {product.salePrice?.toLocaleString() ?? product.price.toLocaleString()}
 						</span>
 						{product.salePrice && (
 							<span className="text-muted-foreground text-sm line-through">
@@ -96,24 +179,20 @@ export default function ProductDetails({ product }: { product: IProduct }) {
 							<Star
 								key={i}
 								className={
-									i <= Math.round(avgRating)
-										? "text-yellow-400 fill-yellow-300"
-										: "text-gray-300"
+									i <= Math.round(avgRating) ? "text-yellow-400 fill-yellow-300" : "text-gray-300"
 								}
 								size={20}
 							/>
 						))}
-						<span className="text-sm text-gray-500">
-							({mockReviews.length} reviews)
-						</span>
+						<span className="text-sm text-gray-500">({reviews.length} reviews)</span>
 					</div>
 					<div className="text-gray-700 mb-2">{product.highlights}</div>
 					<div className="flex flex-wrap gap-4 text-sm text-gray-600">
 						<span>
-							Brand: <b>{product.brand.name}</b>
+							Brand: <b>{getBrandNameSafe(product)}</b>
 						</span>
 						<span>
-							Category: <b>{product.category.name}</b>
+							Category: <b>{getCategoryNameSafe(product)}</b>
 						</span>
 						<span>
 							SKU: <b>{product.sku}</b>
@@ -122,7 +201,7 @@ export default function ProductDetails({ product }: { product: IProduct }) {
 							Stock: <b>{product.stock > 0 ? product.stock : "Out of stock"}</b>
 						</span>
 						<span>
-							Warranty: <b>{product.warranty}</b>
+							Warranty: <b>{product.warranty ?? "N/A"}</b>
 						</span>
 					</div>
 					<div className="flex items-center gap-2 mt-4">
@@ -161,30 +240,74 @@ export default function ProductDetails({ product }: { product: IProduct }) {
 			{/* =============== reviews section =============== */}
 			<div className="mt-10">
 				<h2 className="text-xl font-bold mb-4">Customer Reviews</h2>
-				{/* =============== customer review form =============== */}
-				<ProductReview />
-				{/* =============== customer reviews =============== */}
-				<div className="flex flex-col gap-4 mt-4">
-					{mockReviews.length === 0 && (
-						<div className="text-gray-500">No reviews yet.</div>
-					)}
-					{mockReviews.map((r, idx) => (
-						<div key={idx} className="border rounded-lg p-4 bg-white shadow-sm">
+				{/* =============== customer review form / summary =============== */}
+				{ownReview && !isEditing ? (
+					<div className="w-full max-w-md">
+						<div className="flex items-center justify-between mb-2">
+							<h3 className="text-lg font-semibold">Your Review</h3>
+							<Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+								<Edit3 className="w-4 h-4 mr-1" /> Edit
+							</Button>
+						</div>
+						<div className="border rounded-lg p-4 bg-white shadow-sm">
 							<div className="flex items-center gap-2 mb-1">
 								{[1, 2, 3, 4, 5].map((i) => (
 									<Star
 										key={i}
 										className={
-											i <= r.rating
-												? "text-yellow-400 fill-yellow-300"
-												: "text-gray-300"
+											i <= ownReview.rating ? "text-yellow-400 fill-yellow-300" : "text-gray-300"
 										}
 										size={16}
 									/>
 								))}
-								<span className="font-semibold text-gray-700 ml-2">{r.user}</span>
+							</div>
+							<div className="text-gray-700 text-sm whitespace-pre-wrap">{ownReview.review}</div>
+							<div className="flex gap-2 mt-2">
+								<Button variant="destructive" size="sm" onClick={handleDeleteOwnReview}>
+									<Trash2 className="w-4 h-4" /> Delete
+								</Button>
+							</div>
+						</div>
+					</div>
+				) : (
+					<ProductReview
+						onSubmit={handleSubmitReview}
+						initialRating={ownReview?.rating || 0}
+						initialReview={ownReview?.review || ""}
+						submitLabel={ownReview ? "Update Review" : "Submit Review"}
+					/>
+				)}
+				{/* =============== customer reviews =============== */}
+				<div className="flex flex-col gap-4 mt-4">
+					{!loadingReviews && reviews.length === 0 && (
+						<div className="text-gray-500">No reviews yet. Be the first to review this product.</div>
+					)}
+					{loadingReviews && (
+						<div className="text-gray-500 flex items-center gap-2">
+							<Loader2 className="w-4 h-4 animate-spin" /> Loading reviews...
+						</div>
+					)}
+					{reviews.map((r) => (
+						<div key={r._id} className="border rounded-lg p-4 bg-white shadow-sm">
+							<div className="flex items-center gap-2 mb-1">
+								{[1, 2, 3, 4, 5].map((i) => (
+									<Star
+										key={i}
+										className={i <= r.rating ? "text-yellow-400 fill-yellow-300" : "text-gray-300"}
+										size={16}
+									/>
+								))}
+								<span className="font-semibold text-gray-700 ml-2">{r.user?.name ?? "Anonymous"}</span>
 							</div>
 							<div className="text-gray-700 text-sm">{r.review}</div>
+							{session?.user?.id && r?.user?._id === session.user.id && (
+								<div className="flex gap-2 mt-2">
+									<Button variant="outline" size="sm" onClick={handleDeleteOwnReview}>
+										<Trash2 className="w-4 h-4" />
+										Delete my review
+									</Button>
+								</div>
+							)}
 						</div>
 					))}
 				</div>

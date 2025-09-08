@@ -100,7 +100,6 @@ categorySchema.pre("save", async function (next) {
 });
 
 // Create indexes
-categorySchema.index({ slug: 1 });
 categorySchema.index({ parent: 1 });
 categorySchema.index({ isActive: 1 });
 

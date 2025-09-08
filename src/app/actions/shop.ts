@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { uploadShopImage, CloudinaryService } from "@/lib/cloudinary";
+import { convertToPlaintObject } from "@/lib/utils";
 
 export async function getVendorShop() {
 	try {
@@ -58,7 +59,7 @@ export async function getVendorShop() {
 			updatedAt: user.updatedAt,
 		};
 
-		return { success: true, shop };
+		return { success: true, shop: convertToPlaintObject(shop) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };
@@ -129,7 +130,7 @@ export async function updateVendorShop(formData: FormData, isImageUpload: boolea
 			}
 
 			revalidatePath("/my-shop");
-			return { success: true, shop: updatedUser };
+			return { success: true, shop: convertToPlaintObject(updatedUser) };
 		}
 
 		// Handle regular shop information update
@@ -168,7 +169,7 @@ export async function updateVendorShop(formData: FormData, isImageUpload: boolea
 		}
 
 		revalidatePath("/my-shop");
-		return { success: true, shop: updatedUser };
+		return { success: true, shop: convertToPlaintObject(updatedUser) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };
@@ -207,7 +208,7 @@ export async function getAllVendorShops() {
 			wishlist: user.wishlist || [],
 		}));
 
-		return { success: true, shops };
+		return { success: true, shops: convertToPlaintObject(shops) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };
@@ -252,7 +253,7 @@ export async function getShopByRegistrationNumber(registrationNumber: string) {
 			wishlist: vendorUser.wishlist || [],
 		};
 
-		return { success: true, shop };
+		return { success: true, shop: convertToPlaintObject(shop) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };

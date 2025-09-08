@@ -95,7 +95,6 @@ brandSchema.pre("save", async function (next) {
 });
 
 // Create indexes
-brandSchema.index({ slug: 1 });
 brandSchema.index({ isActive: 1 });
 
 export const Brand = mongoose.models.Brand || mongoose.model<IBrand>("Brand", brandSchema);

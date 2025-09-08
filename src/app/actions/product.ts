@@ -10,6 +10,49 @@ import { uploadProductImage, CloudinaryService } from "@/lib/cloudinary";
 import { revalidatePath } from "next/cache";
 import { convertToPlaintObject } from "@/lib/utils";
 
+// =============== get all active products (public) ================
+export async function getPublicProducts() {
+	try {
+		await connectToDatabase();
+
+		const products = await Product.find({ isActive: true })
+			.populate("category", "name nameBN slug")
+			.populate("brand", "name nameBN slug")
+			.populate("vendor", "shopName registrationNumber")
+			.sort({ createdAt: -1 });
+
+		return { success: true, products: convertToPlaintObject(products) };
+	} catch (error: unknown) {
+		if (error instanceof Error) {
+			return { success: false, error: error.message };
+		}
+		return { success: false, error: "An unknown error occurred" };
+	}
+}
+
+// =============== get single active product by slug (public) ================
+export async function getPublicProductBySlug(slug: string) {
+	try {
+		await connectToDatabase();
+
+		const product = await Product.findOne({ slug, isActive: true })
+			.populate("category", "name nameBN slug")
+			.populate("brand", "name nameBN slug")
+			.populate("vendor", "shopName registrationNumber");
+
+		if (!product) {
+			return { success: false, error: "Product not found" };
+		}
+
+		return { success: true, product: convertToPlaintObject(product) };
+	} catch (error: unknown) {
+		if (error instanceof Error) {
+			return { success: false, error: error.message };
+		}
+		return { success: false, error: "An unknown error occurred" };
+	}
+}
+
 // =============== get products by vendor ================
 export async function getProductsByVendor(vendorId: string) {
 	try {
@@ -25,7 +68,7 @@ export async function getProductsByVendor(vendorId: string) {
 			.populate("vendor", "name shopName registrationNumber")
 			.sort({ createdAt: -1 });
 
-		return { success: true, products };
+		return { success: true, products: convertToPlaintObject(products) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };
@@ -91,7 +134,7 @@ export async function getProductById(productId: string) {
 			return { success: false, error: "Product not found" };
 		}
 
-		return { success: true, product };
+		return { success: true, product: convertToPlaintObject(product) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };
@@ -494,7 +537,7 @@ export async function uploadProductImages(productId: string, formData: FormData)
 		revalidatePath("/my-shop");
 		revalidatePath("/products");
 
-		return { success: true, product };
+		return { success: true, product: convertToPlaintObject(product) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };
@@ -534,7 +577,7 @@ export async function removeProductImage(productId: string, imageUrl: string) {
 		revalidatePath("/my-shop");
 		revalidatePath("/products");
 
-		return { success: true, product };
+		return { success: true, product: convertToPlaintObject(product) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };
