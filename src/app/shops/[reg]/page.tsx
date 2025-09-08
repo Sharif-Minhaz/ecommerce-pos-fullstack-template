@@ -109,35 +109,35 @@ export default async function ShopPageDetails({ params }: { params: { reg: strin
 								<div className="flex items-center gap-2">
 									<span className="text-sm">{shop?.rating}★</span>
 									<div className="flex-1 bg-gray-200 rounded-full h-2">
-										<div className="bg-yellow-400 h-2 rounded-full" style={{ width: "70%" }}></div>
+										<div className="bg-yellow-400 w-[70%] h-2 rounded-full"></div>
 									</div>
 									<span className="text-sm">70%</span>
 								</div>
 								<div className="flex items-center gap-2">
 									<span className="text-sm">{shop?.rating}★</span>
 									<div className="flex-1 bg-gray-200 rounded-full h-2">
-										<div className="bg-yellow-400 h-2 rounded-full" style={{ width: "20%" }}></div>
+										<div className="bg-yellow-400 w-[20%] h-2 rounded-full"></div>
 									</div>
 									<span className="text-sm">20%</span>
 								</div>
 								<div className="flex items-center gap-2">
 									<span className="text-sm">{shop?.rating}★</span>
 									<div className="flex-1 bg-gray-200 rounded-full h-2">
-										<div className="bg-yellow-400 h-2 rounded-full" style={{ width: "7%" }}></div>
+										<div className="bg-yellow-400 w-[7%] h-2 rounded-full"></div>
 									</div>
 									<span className="text-sm">7%</span>
 								</div>
 								<div className="flex items-center gap-2">
 									<span className="text-sm">{shop?.rating}★</span>
 									<div className="flex-1 bg-gray-200 rounded-full h-2">
-										<div className="bg-yellow-400 h-2 rounded-full" style={{ width: "2%" }}></div>
+										<div className="bg-yellow-400 w-[2%] h-2 rounded-full"></div>
 									</div>
 									<span className="text-sm">2%</span>
 								</div>
 								<div className="flex items-center gap-2">
 									<span className="text-sm">{shop?.rating}★</span>
 									<div className="flex-1 bg-gray-200 rounded-full h-2">
-										<div className="bg-yellow-400 h-2 rounded-full" style={{ width: "1%" }}></div>
+										<div className="bg-yellow-400 w-[1%] h-2 rounded-full"></div>
 									</div>
 									<span className="text-sm">1%</span>
 								</div>

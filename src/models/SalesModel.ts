@@ -193,15 +193,7 @@ const salesSchema = new Schema<ISales>(
 			type: String,
 			required: [true, "Order status is required"],
 			enum: {
-				values: [
-					"pending",
-					"approved",
-					"rejected",
-					"processing",
-					"shipped",
-					"delivered",
-					"cancelled",
-				],
+				values: ["pending", "approved", "rejected", "processing", "shipped", "delivered", "cancelled"],
 				message: "{VALUE} is not a valid order status",
 			},
 			default: "pending",
@@ -289,7 +281,6 @@ const salesSchema = new Schema<ISales>(
 );
 
 // =============== indexes for better query performance ================
-salesSchema.index({ orderNumber: 1 }, { unique: true });
 salesSchema.index({ user: 1 });
 salesSchema.index({ status: 1 });
 salesSchema.index({ orderDate: -1 });
@@ -301,10 +292,7 @@ salesSchema.index({ location: "2dsphere" });
 
 // =============== virtual for calculating total items ================
 salesSchema.virtual("totalItems").get(function (this: ISales) {
-	return this.items.reduce(
-		(total: number, item: { quantity: number }) => total + item.quantity,
-		0
-	);
+	return this.items.reduce((total: number, item: { quantity: number }) => total + item.quantity, 0);
 });
 
 // =============== pre-save middleware to generate order number ================
@@ -324,12 +312,8 @@ salesSchema.pre("save", function (this: ISales, next) {
 
 // =============== method to calculate totals ================
 salesSchema.methods.calculateTotals = function (this: ISales) {
-	const subtotal = this.items.reduce(
-		(total: number, item: { totalPrice: number }) => total + item.totalPrice,
-		0
-	);
-	const discountAmount =
-		this.discountType === "percentage" ? (subtotal * this.discount) / 100 : this.discount;
+	const subtotal = this.items.reduce((total: number, item: { totalPrice: number }) => total + item.totalPrice, 0);
+	const discountAmount = this.discountType === "percentage" ? (subtotal * this.discount) / 100 : this.discount;
 	const finalSubtotal = subtotal - discountAmount - (this.couponDiscount || 0);
 	const totalAmount = finalSubtotal + this.deliveryCharge + (this.taxAmount || 0);
 

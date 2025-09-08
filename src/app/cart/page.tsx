@@ -5,14 +5,9 @@ import { useCart } from "@/hooks/useCart";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-	Select,
-	SelectTrigger,
-	SelectContent,
-	SelectItem,
-	SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function CartPage() {
 	const { cart, updateQuantity, removeFromCart, subtotal, totalItems, isMounted } = useCart();
@@ -84,14 +79,9 @@ export default function CartPage() {
 									</div>
 									{/* =============== product info =============== */}
 									<div className="flex-1 flex flex-col gap-1 min-w-0">
-										<div className="font-semibold truncate">
-											{item.product.title}
-										</div>
+										<div className="font-semibold truncate">{item.product.title}</div>
 										<div className="text-xs text-muted-foreground">
-											Lat Price:{" "}
-											<span className="line-through">
-												SAR{item.product.price}
-											</span>
+											Lat Price: <span className="line-through">SAR{item.product.price}</span>
 										</div>
 									</div>
 									{/* =============== quantity selector =============== */}
@@ -99,25 +89,15 @@ export default function CartPage() {
 										<Select
 											value={String(item.quantity)}
 											onValueChange={(val) =>
-												updateQuantity(
-													String(item.product._id),
-													Number(val)
-												)
+												updateQuantity(String(item.product._id), Number(val))
 											}
 										>
 											<SelectTrigger className="w-14" size="sm">
 												<SelectValue />
 											</SelectTrigger>
 											<SelectContent>
-												{[
-													...Array(
-														Math.min(10, item.product.stock)
-													).keys(),
-												].map((i) => (
-													<SelectItem
-														key={String(i + 1)}
-														value={String(i + 1)}
-													>
+												{[...Array(Math.min(10, item.product.stock)).keys()].map((i) => (
+													<SelectItem key={String(i + 1)} value={String(i + 1)}>
 														{i + 1}
 													</SelectItem>
 												))}
@@ -136,17 +116,13 @@ export default function CartPage() {
 									{/* =============== price =============== */}
 									<div className="flex flex-col items-end min-w-[100px]">
 										<span className="font-semibold">
-											SAR{" "}
-											{(item.product.salePrice ?? item.product.price).toFixed(
-												2
-											)}
+											SAR {(item.product.salePrice ?? item.product.price).toFixed(2)}
 										</span>
 										<span className="text-xs text-muted-foreground">
 											SAR{" "}
-											{(
-												(item.product.salePrice ?? item.product.price) *
-												item.quantity
-											).toFixed(2)}
+											{((item.product.salePrice ?? item.product.price) * item.quantity).toFixed(
+												2
+											)}
 										</span>
 									</div>
 								</Card>
@@ -170,11 +146,7 @@ export default function CartPage() {
 								Apply
 							</Button>
 						</div>
-						{couponApplied && (
-							<div className="text-green-600 text-xs mb-2">
-								Coupon applied! -SAR20
-							</div>
-						)}
+						{couponApplied && <div className="text-green-600 text-xs mb-2">Coupon applied! -SAR20</div>}
 						<div className="flex flex-col gap-2 text-sm mb-4">
 							<div className="flex justify-between">
 								<span>Subtotal ({totalItems} items)</span>
@@ -182,9 +154,7 @@ export default function CartPage() {
 							</div>
 							<div className="flex justify-between">
 								<span>Delivery charge</span>
-								<span>
-									SAR {deliveryCharge === 0 ? "Free" : deliveryCharge.toFixed(2)}
-								</span>
+								<span>SAR {deliveryCharge === 0 ? "Free" : deliveryCharge.toFixed(2)}</span>
 							</div>
 							{discount > 0 && (
 								<div className="flex justify-between text-red-500">
@@ -197,8 +167,8 @@ export default function CartPage() {
 							<span>Total</span>
 							<span>SAR {total.toFixed(2)}</span>
 						</div>
-						<Button className="w-full" size="lg" disabled={cart.length === 0}>
-							Proceed to Checkout
+						<Button className="w-full" size="lg" disabled={cart.length === 0} asChild>
+							<Link href="/checkout">Proceed to Checkout</Link>
 						</Button>
 					</Card>
 				</div>

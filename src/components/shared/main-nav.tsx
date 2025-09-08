@@ -86,10 +86,18 @@ export function MainNav() {
 									<DropdownMenuItem asChild>
 										<Link href="/profile">{t("viewProfile", language)}</Link>
 									</DropdownMenuItem>
+									<DropdownMenuItem asChild>
+										<Link href="/my-orders">My Orders</Link>
+									</DropdownMenuItem>
 									{session.user?.userType === "vendor" && (
-										<DropdownMenuItem asChild>
-											<Link href="/my-shop">My Shop</Link>
-										</DropdownMenuItem>
+										<>
+											<DropdownMenuItem asChild>
+												<Link href="/my-shop">My Shop</Link>
+											</DropdownMenuItem>
+											<DropdownMenuItem asChild>
+												<Link href="/my-shop/manage-orders">Manage Orders</Link>
+											</DropdownMenuItem>
+										</>
 									)}
 									<DropdownMenuItem asChild>
 										<Link href="/wishlist">{t("wishlist", language)}</Link>

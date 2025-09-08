@@ -7,34 +7,14 @@ import { useCart } from "@/hooks/useCart";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-	Select,
-	SelectTrigger,
-	SelectContent,
-	SelectItem,
-	SelectValue,
-} from "@/components/ui/select";
-import {
-	Form,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormControl,
-	FormMessage,
-} from "@/components/ui/form";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { createSalesOrder, CreateOrderInput } from "../actions/sales";
 
-const cities = [
-	"Dhaka",
-	"Chattogram",
-	"Khulna",
-	"Rajshahi",
-	"Barisal",
-	"Sylhet",
-	"Rangpur",
-	"Mymensingh",
-];
+const cities = ["Dhaka", "Chattogram", "Khulna", "Rajshahi", "Barisal", "Sylhet", "Rangpur", "Mymensingh"];
 const paymentMethods = [
 	{ value: "cod", label: "Cash on Delivery", icon: null },
 	{ value: "sslcommerz", label: "SSLCommerz", icon: SSLCommerzIcon },
@@ -52,9 +32,11 @@ type CheckoutForm = {
 
 export default function CheckoutPage() {
 	// =============== get cart info ================
-	const { cart, subtotal, totalItems, isMounted } = useCart();
+	const { cart, subtotal, totalItems, isMounted, clearCart } = useCart();
 	const [step, setStep] = useState(1);
 	const [selectedPayment, setSelectedPayment] = useState<string>("");
+	const router = useRouter();
+	const [placing, setPlacing] = useState<boolean>(false);
 
 	// =============== form setup ================
 	const form = useForm<CheckoutForm>({
@@ -83,9 +65,50 @@ export default function CheckoutPage() {
 	const codCharge = selectedPayment === "cod" ? 10 : 0;
 	const total = subtotal + deliveryCharge + codCharge;
 
+	// =============== place order ================
+	const handlePlaceOrder = async () => {
+		if (!selectedPayment) return;
+		try {
+			setPlacing(true);
+			const payload: CreateOrderInput = {
+				items: cart.map((ci) => ({
+					productId: String(ci.product._id),
+					quantity: ci.quantity,
+					unitPrice: ci.product.salePrice ?? ci.product.price,
+				})),
+				deliveryDetails: {
+					address: form.getValues("address"),
+					city: form.getValues("city"),
+					postalCode: form.getValues("postalCode"),
+					phone: form.getValues("mobile"),
+				},
+				paymentMethod: selectedPayment as CreateOrderInput["paymentMethod"],
+				deliveryCharge,
+				couponDiscount: 0,
+				discount: 0,
+				taxAmount: 0,
+			};
+			const res = await createSalesOrder(payload);
+			if (res.success) {
+				clearCart();
+				router.push("/my-orders");
+			} else {
+				alert(res.error || "Failed to place order");
+			}
+		} finally {
+			setPlacing(false);
+		}
+	};
+
 	// =============== loading state ================
 	if (!isMounted) {
 		return <div className="container mx-auto py-8 px-2 max-w-7xl">Loading...</div>;
+	}
+
+	// =============== redirect to cart if empty ================
+	if (cart.length === 0) {
+		router.push("/cart");
+		return null;
 	}
 
 	return (
@@ -103,14 +126,8 @@ export default function CheckoutPage() {
 								>
 									1
 								</div>
-								<span
-									className={
-										step === 1
-											? "font-bold text-base"
-											: "text-gray-500 text-base"
-									}
-								>
-									Contact Information
+								<span className={step === 1 ? "font-bold text-base" : "text-gray-500 text-base"}>
+									Billing Information
 								</span>
 								<div className="w-8 h-0.5 bg-gray-200 mx-2" />
 								<div
@@ -120,22 +137,13 @@ export default function CheckoutPage() {
 								>
 									2
 								</div>
-								<span
-									className={
-										step === 2
-											? "font-bold text-base"
-											: "text-gray-500 text-base"
-									}
-								>
+								<span className={step === 2 ? "font-bold text-base" : "text-gray-500 text-base"}>
 									Payment
 								</span>
 							</div>
 							{step === 1 && (
 								<Form {...form}>
-									<form
-										onSubmit={form.handleSubmit(onSubmit)}
-										className="space-y-5"
-									>
+									<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
 										{/* =============== city ================ */}
 										<FormField
 											control={form.control}
@@ -144,10 +152,7 @@ export default function CheckoutPage() {
 											render={({ field }) => (
 												<FormItem>
 													<FormLabel>City</FormLabel>
-													<Select
-														onValueChange={field.onChange}
-														value={field.value}
-													>
+													<Select onValueChange={field.onChange} value={field.value}>
 														<FormControl>
 															<SelectTrigger>
 																<SelectValue placeholder="Select a city" />
@@ -174,10 +179,7 @@ export default function CheckoutPage() {
 												<FormItem>
 													<FormLabel>District/Area</FormLabel>
 													<FormControl>
-														<Input
-															placeholder="Enter district or area"
-															{...field}
-														/>
+														<Input placeholder="Enter district or area" {...field} />
 													</FormControl>
 													<FormMessage />
 												</FormItem>
@@ -192,10 +194,7 @@ export default function CheckoutPage() {
 												<FormItem>
 													<FormLabel>Address</FormLabel>
 													<FormControl>
-														<Input
-															placeholder="Enter street or building name"
-															{...field}
-														/>
+														<Input placeholder="Enter street or building name" {...field} />
 													</FormControl>
 													<FormMessage />
 												</FormItem>
@@ -210,10 +209,7 @@ export default function CheckoutPage() {
 												<FormItem>
 													<FormLabel>Postal Code</FormLabel>
 													<FormControl>
-														<Input
-															placeholder="Enter postal code"
-															{...field}
-														/>
+														<Input placeholder="Enter postal code" {...field} />
 													</FormControl>
 													<FormMessage />
 												</FormItem>
@@ -225,14 +221,9 @@ export default function CheckoutPage() {
 											name="mapAddress"
 											render={({ field }) => (
 												<FormItem>
-													<FormLabel>
-														Address (Pin or Map or Type your Address)
-													</FormLabel>
+													<FormLabel>Address (Pin or Map or Type your Address)</FormLabel>
 													<FormControl>
-														<Input
-															placeholder="Enter address"
-															{...field}
-														/>
+														<Input placeholder="Enter address" {...field} />
 													</FormControl>
 													<FormMessage />
 												</FormItem>
@@ -247,39 +238,27 @@ export default function CheckoutPage() {
 												<FormItem>
 													<FormLabel>Mobile number</FormLabel>
 													<FormControl>
-														<Input
-															placeholder="Enter mobile number"
-															{...field}
-														/>
+														<Input placeholder="Enter mobile number" {...field} />
 													</FormControl>
 													<FormMessage />
 												</FormItem>
 											)}
 										/>
-										<Button
-											type="submit"
-											className="w-full mt-6 text-base py-3"
-										>
+										<Button type="submit" className="w-full mt-6 text-base py-3">
 											Continue to Payment
 										</Button>
 									</form>
 								</Form>
 							)}
 							{step === 2 && (
-								<div className="space-y-8">
+								<div className="space-y-12">
 									<div>
-										<div className="font-semibold mb-4 text-lg">
-											Select Payment Method
-										</div>
+										<div className="font-semibold mb-4 text-lg">Select Payment Method</div>
 										<div className="flex flex-col sm:flex-row gap-4">
 											{paymentMethods.map((pm) => (
 												<Button
 													key={pm.value}
-													variant={
-														selectedPayment === pm.value
-															? "default"
-															: "outline"
-													}
+													variant={selectedPayment === pm.value ? "default" : "outline"}
 													onClick={() => handlePaymentSelect(pm.value)}
 													type="button"
 													className={`flex items-center gap-2 px-6 py-3 text-base border-2 transition-all duration-150 ${
@@ -307,12 +286,24 @@ export default function CheckoutPage() {
 											</div>
 										)}
 									</div>
-									<Button
-										className="w-full text-base py-3"
-										disabled={!selectedPayment}
-									>
-										Place Order
-									</Button>
+									{/* =============== back and place order actions ================ */}
+									<div className="flex w-full justify-center gap-3">
+										<Button
+											variant="outline"
+											type="button"
+											className="text-base py-3 w-[260px]"
+											onClick={() => setStep(1)}
+										>
+											Back to Billing
+										</Button>
+										<Button
+											className="text-base py-3 w-[260px]"
+											disabled={!selectedPayment || placing}
+											onClick={handlePlaceOrder}
+										>
+											Place Order
+										</Button>
+									</div>
 								</div>
 							)}
 						</CardContent>
@@ -330,10 +321,7 @@ export default function CheckoutPage() {
 								</div>
 								<div className="flex justify-between">
 									<span>Delivery charge</span>
-									<span>
-										৳{" "}
-										{deliveryCharge === 0 ? "Free" : deliveryCharge.toFixed(2)}
-									</span>
+									<span>৳ {deliveryCharge === 0 ? "Free" : deliveryCharge.toFixed(2)}</span>
 								</div>
 								{selectedPayment === "cod" && (
 									<div className="flex justify-between text-orange-600">
@@ -348,32 +336,24 @@ export default function CheckoutPage() {
 							</div>
 							<div className="divide-y">
 								{cart.map((item) => (
-									<div
-										key={String(item.product._id)}
-										className="flex items-center gap-3 py-3"
-									>
+									<div key={String(item.product._id)} className="flex items-center gap-3 py-3">
 										<img
 											src={item.product.gallery[0]}
 											alt={item.product.title}
 											className="w-14 h-14 object-contain rounded border"
 										/>
 										<div className="flex-1 min-w-0">
-											<div className="font-medium text-base truncate">
-												{item.product.title}
-											</div>
+											<div className="font-medium text-base truncate">{item.product.title}</div>
 											<div className="text-xs text-gray-500">
 												{item.quantity} x ৳
-												{(
-													item.product.salePrice ?? item.product.price
-												).toFixed(2)}
+												{(item.product.salePrice ?? item.product.price).toFixed(2)}
 											</div>
 										</div>
 										<div className="font-semibold text-base">
 											৳
-											{(
-												(item.product.salePrice ?? item.product.price) *
-												item.quantity
-											).toFixed(2)}
+											{((item.product.salePrice ?? item.product.price) * item.quantity).toFixed(
+												2
+											)}
 										</div>
 									</div>
 								))}
