@@ -4,14 +4,16 @@ import { IProduct } from "./product";
 import { ICoupon } from "./coupon";
 
 export type PaymentMethod = "cod" | "stripe" | "sslcommerz";
-export type OrderStatus =
-	| "pending"
-	| "approved"
+export type OrderStatus = "pending" | "approved" | "rejected" | "processing" | "shipped" | "delivered" | "cancelled";
+
+export type DeliveryStatus =
+	| "pending_assignment"
+	| "assigned"
+	| "accepted"
 	| "rejected"
-	| "processing"
-	| "shipped"
+	| "picked_up"
 	| "delivered"
-	| "cancelled";
+	| "failed";
 
 export interface OrderItem {
 	product: PopulatedDoc<IProduct & Document>;
@@ -68,6 +70,15 @@ export interface ISalesBase {
 	isPaid: boolean;
 	isDelivered: boolean;
 	isCancelled: boolean;
+	// =============== rider assignment fields ================
+	assignedRider?: PopulatedDoc<Document>;
+	riderAssignmentDate?: Date;
+	riderAcceptedDate?: Date;
+	riderRejectedDate?: Date;
+	riderRejectionReason?: string;
+	deliveryStatus: DeliveryStatus;
+	deliveryNotes?: string;
+	deliveryProof?: string;
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -82,6 +93,7 @@ export interface ISalesPopulated extends ISalesBase {
 export interface ISalesUnpopulated extends ISalesBase {
 	user: Document["_id"];
 	coupon?: Document["_id"];
+	assignedRider?: Document["_id"];
 }
 
 // Main interface that can handle both populated and unpopulated states

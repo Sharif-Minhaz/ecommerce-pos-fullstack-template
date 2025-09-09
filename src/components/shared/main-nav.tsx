@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import { useEffect, useState } from "react";
+import { getRiderProfile } from "@/app/actions/rider";
 import { useLanguage } from "@/components/providers/language-provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +24,27 @@ export function MainNav() {
 	const pathname = usePathname();
 	const { data: session } = useSession();
 	const { language, setLanguage } = useLanguage();
+	const [hasRiderProfile, setHasRiderProfile] = useState<boolean | null>(null);
+
+	useEffect(() => {
+		let isMounted = true;
+		async function checkRider() {
+			try {
+				if (session?.user?.userType !== "rider") {
+					if (isMounted) setHasRiderProfile(false);
+					return;
+				}
+				const res = await getRiderProfile();
+				if (isMounted) setHasRiderProfile(!!res.success);
+			} catch {
+				if (isMounted) setHasRiderProfile(false);
+			}
+		}
+		checkRider();
+		return () => {
+			isMounted = false;
+		};
+	}, [session?.user?.userType]);
 
 	return (
 		<header className="px-4 sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -99,10 +122,20 @@ export function MainNav() {
 											</DropdownMenuItem>
 										</>
 									)}
+									{session.user?.userType === "rider" && hasRiderProfile === false && (
+										<DropdownMenuItem asChild>
+											<Link href="/auth/register-rider">Become a Rider</Link>
+										</DropdownMenuItem>
+									)}
+									{session.user?.userType === "user" && (
+										<DropdownMenuItem asChild>
+											<Link href="/auth/register-rider">Become a Rider</Link>
+										</DropdownMenuItem>
+									)}
 									<DropdownMenuItem asChild>
 										<Link href="/wishlist">{t("wishlist", language)}</Link>
 									</DropdownMenuItem>
-									<DropdownMenuItem onClick={() => signOut()}>
+									<DropdownMenuItem onClick={() => signOut({ callbackUrl: "/auth/login" })}>
 										{t("logout", language)}
 									</DropdownMenuItem>
 								</DropdownMenuContent>

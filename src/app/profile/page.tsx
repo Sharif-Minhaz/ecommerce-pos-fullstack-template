@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2, User, Mail, Hash, Calendar, Edit3, Save, X, Store } from "lucide-react";
 import Link from "next/link";
+import { getRiderProfile } from "@/app/actions/rider";
 
 interface UserProfile {
 	_id: string;
@@ -34,6 +35,8 @@ export default function ProfilePage() {
 		name: "",
 		phoneNumber: "",
 	});
+	const [riderLoading, setRiderLoading] = useState(false);
+	const [hasRiderProfile, setHasRiderProfile] = useState<boolean | null>(null);
 
 	// =============== fetch user profile on component mount ================
 	useEffect(() => {
@@ -58,6 +61,20 @@ export default function ProfilePage() {
 					name: result.user.name || "",
 					phoneNumber: result.user.phoneNumber || "",
 				});
+				// check rider profile existence when user is rider
+				if (result.user.userType === "rider") {
+					setRiderLoading(true);
+					try {
+						const r = await getRiderProfile();
+						setHasRiderProfile(!!r.success);
+					} catch {
+						setHasRiderProfile(false);
+					} finally {
+						setRiderLoading(false);
+					}
+				} else {
+					setHasRiderProfile(null);
+				}
 			} else {
 				toast.error(result.error || "Failed to fetch profile");
 			}
@@ -207,6 +224,40 @@ export default function ProfilePage() {
 										Go to My Shop
 									</Button>
 								</Link>
+							</div>
+						</CardContent>
+					</Card>
+				)}
+
+				{/* Rider Profile Management */}
+				{profile.userType === "rider" && (
+					<Card className="border-primary/20 bg-primary/5">
+						<CardContent>
+							<div className="flex items-center justify-between">
+								<div>
+									<h3 className="font-semibold">Rider Profile</h3>
+									<p className="text-sm text-muted-foreground">
+										Manage your rider details, vehicle information, and delivery access
+									</p>
+								</div>
+								<div className="flex gap-2">
+									{hasRiderProfile ? (
+										<>
+											<Link href="/rider/dashboard">
+												<Button variant="secondary" disabled={riderLoading}>
+													Rider Dashboard
+												</Button>
+											</Link>
+											<Link href="/auth/register-rider">
+												<Button disabled={riderLoading}>Manage Rider Profile</Button>
+											</Link>
+										</>
+									) : (
+										<Link href="/auth/register-rider">
+											<Button disabled={riderLoading}>Create Rider Profile</Button>
+										</Link>
+									)}
+								</div>
 							</div>
 						</CardContent>
 					</Card>

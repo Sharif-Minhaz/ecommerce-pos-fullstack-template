@@ -147,9 +147,7 @@ export async function updateOrderStatus(formData: FormData) {
 		await order.save();
 
 		revalidatePath("/my-shop/manage-orders");
-		return { success: true };
 	} catch (error: unknown) {
-		if (error instanceof Error) return { success: false, error: error.message };
-		return { success: false, error: "An unknown error occurred" };
+		console.error("Failed to update order status:", error);
 	}
 }

@@ -274,6 +274,42 @@ const salesSchema = new Schema<ISales>(
 			type: Boolean,
 			default: false,
 		},
+		// =============== rider assignment fields ================
+		assignedRider: {
+			type: Schema.Types.ObjectId,
+			ref: "Rider",
+		},
+		riderAssignmentDate: {
+			type: Date,
+		},
+		riderAcceptedDate: {
+			type: Date,
+		},
+		riderRejectedDate: {
+			type: Date,
+		},
+		riderRejectionReason: {
+			type: String,
+			trim: true,
+			maxlength: [200, "Rider rejection reason cannot exceed 200 characters"],
+		},
+		deliveryStatus: {
+			type: String,
+			enum: {
+				values: ["pending_assignment", "assigned", "accepted", "rejected", "picked_up", "delivered", "failed"],
+				message: "{VALUE} is not a valid delivery status",
+			},
+			default: "pending_assignment",
+		},
+		deliveryNotes: {
+			type: String,
+			trim: true,
+			maxlength: [500, "Delivery notes cannot exceed 500 characters"],
+		},
+		deliveryProof: {
+			type: String,
+			trim: true,
+		},
 	},
 	{
 		timestamps: true,
@@ -289,6 +325,8 @@ salesSchema.index({ isPaid: 1 });
 salesSchema.index({ isDelivered: 1 });
 salesSchema.index({ "deliveryDetails.city": 1 });
 salesSchema.index({ location: "2dsphere" });
+salesSchema.index({ assignedRider: 1 });
+salesSchema.index({ deliveryStatus: 1 });
 
 // =============== virtual for calculating total items ================
 salesSchema.virtual("totalItems").get(function (this: ISales) {

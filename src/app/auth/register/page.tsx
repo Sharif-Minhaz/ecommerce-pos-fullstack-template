@@ -6,33 +6,21 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import {
-	Form,
-	FormControl,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { registerUser } from "@/app/actions/auth";
 import { signIn } from "next-auth/react";
+import Link from "next/link";
 
 const formSchema = z
 	.object({
 		name: z.string().min(2, "Name must be at least 2 characters"),
 		email: z.string().email("Invalid email address"),
 		password: z.string().min(6, "Password must be at least 6 characters"),
-		userType: z.enum(["user", "vendor"]),
+		userType: z.enum(["user", "vendor", "rider"]),
 		phoneNumber: z.string().optional(),
 		shopName: z.string().optional(),
 		shopDescription: z.string().optional(),
@@ -162,6 +150,7 @@ export default function RegisterPage() {
 									<SelectContent>
 										<SelectItem value="user">Customer</SelectItem>
 										<SelectItem value="vendor">Vendor</SelectItem>
+										<SelectItem value="rider">Rider</SelectItem>
 									</SelectContent>
 								</Select>
 								<FormMessage />
@@ -242,9 +231,7 @@ export default function RegisterPage() {
 							<span className="w-full border-t" />
 						</div>
 						<div className="relative flex justify-center text-xs uppercase">
-							<span className="bg-background px-2 text-muted-foreground">
-								Or continue with
-							</span>
+							<span className="bg-background px-2 text-muted-foreground">Or continue with</span>
 						</div>
 					</div>
 

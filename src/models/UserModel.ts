@@ -30,7 +30,7 @@ const userSchema = new Schema<IUser>(
 		},
 		userType: {
 			type: String,
-			enum: ["user", "vendor", "admin"],
+			enum: ["user", "vendor", "admin", "rider"],
 			default: "user",
 		},
 		password: {
@@ -64,7 +64,6 @@ const userSchema = new Schema<IUser>(
 		],
 		registrationNumber: {
 			type: String,
-			unique: true,
 			trim: true,
 		},
 		image: {

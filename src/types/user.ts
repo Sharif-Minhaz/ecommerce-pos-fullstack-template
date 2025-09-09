@@ -7,7 +7,7 @@ export interface IUserBase {
 	email: string;
 	phoneNumber: string;
 	is_ban: boolean;
-	userType: "user" | "vendor" | "admin";
+	userType: "user" | "vendor" | "admin" | "rider";
 	password?: string;
 	image?: string;
 	shopName?: string;

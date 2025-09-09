@@ -11,7 +11,7 @@ export async function registerUser(formData: FormData) {
 		const name = formData.get("name") as string;
 		const email = formData.get("email") as string;
 		const password = formData.get("password") as string;
-		const userType = formData.get("userType") as "user" | "vendor";
+		const userType = formData.get("userType") as "user" | "vendor" | "rider";
 		const phoneNumber = formData.get("phoneNumber") as string;
 		const shopName = formData.get("shopName") as string;
 		const shopDescription = formData.get("shopDescription") as string;
