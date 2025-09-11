@@ -19,6 +19,7 @@ import Image from "next/image";
 import { t } from "@/lib/translation";
 import { ThemeSwitcher } from "./theme-switcher";
 import { CartSheet } from "./CartSheet";
+import { NotificationDropdown } from "./NotificationDropdown";
 
 export function MainNav() {
 	const pathname = usePathname();
@@ -147,6 +148,8 @@ export function MainNav() {
 								</Button>
 							</Link>
 						)}
+						{/* ============= notification dropdown ============ */}
+						<NotificationDropdown />
 					</div>
 				</div>
 			</div>
