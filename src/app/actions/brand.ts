@@ -76,6 +76,7 @@ export async function createBrandQuick(formData: FormData) {
 		const uploadedBrand = await CloudinaryService.uploadImage(imageFile, { folder: "brands" });
 
 		const brand = new Brand({
+			createdBy: session?.user?.id,
 			name,
 			nameBN,
 			description,
@@ -155,13 +156,13 @@ export async function createBrand(formData: FormData) {
 
 		// =============== create brand ================
 		const brand = new Brand({
+			createdBy: session?.user?.id,
 			name,
 			nameBN,
 			description,
 			descriptionBN,
 			image: imageResult.secure_url,
 			imageKey: imageResult.public_id,
-			createdBy: session.user.id,
 		});
 
 		await brand.save();

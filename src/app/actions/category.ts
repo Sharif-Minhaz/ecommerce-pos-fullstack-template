@@ -77,6 +77,7 @@ export async function createCategoryQuick(formData: FormData) {
 		});
 
 		const category = new Category({
+			createdBy: session?.user?.id,
 			name,
 			nameBN,
 			description,
@@ -169,6 +170,7 @@ export async function createCategory(formData: FormData) {
 
 		// =============== create category ================
 		const category = new Category({
+			createdBy: session?.user?.id,
 			name,
 			nameBN,
 			description,
@@ -176,7 +178,6 @@ export async function createCategory(formData: FormData) {
 			parent: parent && parent !== "" ? parent : null,
 			image: imageResult.secure_url,
 			imageKey: imageResult.public_id,
-			createdBy: session.user.id,
 		});
 
 		await category.save();
