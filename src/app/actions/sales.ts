@@ -13,7 +13,7 @@ type CreateOrderItem = {
 	unitPrice: number;
 };
 
-type CreateOrderInput = {
+export type CreateOrderInput = {
 	items: CreateOrderItem[];
 	deliveryDetails: {
 		address: string;

@@ -106,7 +106,8 @@ export default function CheckoutPage() {
 	}
 
 	// =============== redirect to cart if empty ================
-	if (cart.length === 0) {
+	// =============== only redirect on step 1 to avoid interfering after order placement ===============
+	if (cart.length === 0 && step === 1) {
 		router.push("/cart");
 		return null;
 	}

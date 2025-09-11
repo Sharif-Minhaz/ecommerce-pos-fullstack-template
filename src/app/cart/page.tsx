@@ -81,7 +81,7 @@ export default function CartPage() {
 									<div className="flex-1 flex flex-col gap-1 min-w-0">
 										<div className="font-semibold truncate">{item.product.title}</div>
 										<div className="text-xs text-muted-foreground">
-											Lat Price: <span className="line-through">SAR{item.product.price}</span>
+											Lat Price: <span className="line-through">BDT{item.product.price}</span>
 										</div>
 									</div>
 									{/* =============== quantity selector =============== */}
@@ -116,10 +116,10 @@ export default function CartPage() {
 									{/* =============== price =============== */}
 									<div className="flex flex-col items-end min-w-[100px]">
 										<span className="font-semibold">
-											SAR {(item.product.salePrice ?? item.product.price).toFixed(2)}
+											BDT {(item.product.salePrice ?? item.product.price).toFixed(2)}
 										</span>
 										<span className="text-xs text-muted-foreground">
-											SAR{" "}
+											BDT{" "}
 											{((item.product.salePrice ?? item.product.price) * item.quantity).toFixed(
 												2
 											)}
@@ -146,26 +146,26 @@ export default function CartPage() {
 								Apply
 							</Button>
 						</div>
-						{couponApplied && <div className="text-green-600 text-xs mb-2">Coupon applied! -SAR20</div>}
+						{couponApplied && <div className="text-green-600 text-xs mb-2">Coupon applied! -BDT20</div>}
 						<div className="flex flex-col gap-2 text-sm mb-4">
 							<div className="flex justify-between">
 								<span>Subtotal ({totalItems} items)</span>
-								<span>SAR {subtotal.toFixed(2)}</span>
+								<span>BDT {subtotal.toFixed(2)}</span>
 							</div>
 							<div className="flex justify-between">
 								<span>Delivery charge</span>
-								<span>SAR {deliveryCharge === 0 ? "Free" : deliveryCharge.toFixed(2)}</span>
+								<span>BDT {deliveryCharge === 0 ? "Free" : deliveryCharge.toFixed(2)}</span>
 							</div>
 							{discount > 0 && (
 								<div className="flex justify-between text-red-500">
 									<span>You saved</span>
-									<span>- SAR {discount.toFixed(2)}</span>
+									<span>- BDT {discount.toFixed(2)}</span>
 								</div>
 							)}
 						</div>
 						<div className="flex justify-between font-bold text-lg mb-4">
 							<span>Total</span>
-							<span>SAR {total.toFixed(2)}</span>
+							<span>BDT {total.toFixed(2)}</span>
 						</div>
 						<Button className="w-full" size="lg" disabled={cart.length === 0} asChild>
 							<Link href="/checkout">Proceed to Checkout</Link>
