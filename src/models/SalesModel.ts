@@ -34,7 +34,7 @@ const deliveryDetailsSchema = new Schema({
 	},
 	phone: {
 		type: String,
-		required: [true, "Delivery phone is required"],
+		// =============== optional for POS ================
 		trim: true,
 		match: [/^\+?[1-9]\d{1,14}$/, "Please enter a valid international phone number"],
 	},
@@ -46,14 +46,14 @@ const deliveryDetailsSchema = new Schema({
 	},
 	address: {
 		type: String,
-		required: [true, "Delivery address is required"],
+		// =============== optional for POS ================
 		trim: true,
 		minlength: [10, "Address must be at least 10 characters long"],
 		maxlength: [500, "Address cannot exceed 500 characters"],
 	},
 	city: {
 		type: String,
-		required: [true, "City is required"],
+		// =============== optional for POS ================
 		trim: true,
 		minlength: [2, "City must be at least 2 characters long"],
 		maxlength: [50, "City cannot exceed 50 characters"],
@@ -65,7 +65,7 @@ const deliveryDetailsSchema = new Schema({
 	},
 	postalCode: {
 		type: String,
-		required: [true, "Postal code is required"],
+		// =============== optional for POS ================
 		trim: true,
 		minlength: [3, "Postal code must be at least 3 characters long"],
 		maxlength: [20, "Postal code cannot exceed 20 characters"],

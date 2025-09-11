@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Package, Store } from "lucide-react";
+import { Plus, Package, Store, MonitorSmartphone } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 
@@ -40,6 +40,17 @@ export default function FloatingActionButton() {
 						: "opacity-0 -translate-y-2 pointer-events-none"
 				}`}
 			>
+				<Link href="/pos">
+					<div className="flex items-center gap-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+						<div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center">
+							<MonitorSmartphone className="h-5 w-5 text-white" />
+						</div>
+						<div className="text-sm">
+							<div className="font-medium">POS Dashboard</div>
+							<div className="text-muted-foreground">Record sales & purchases</div>
+						</div>
+					</div>
+				</Link>
 				<Link href="/my-shop/products/new">
 					<div className="flex items-center gap-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
 						<div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">

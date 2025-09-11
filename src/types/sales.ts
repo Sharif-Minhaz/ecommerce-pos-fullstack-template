@@ -24,12 +24,12 @@ export interface OrderItem {
 
 export interface DeliveryDetails {
 	name: string;
-	phone: string;
+	phone?: string;
 	email?: string;
-	address: string;
-	city: string;
+	address?: string;
+	city?: string;
 	state?: string;
-	postalCode: string;
+	postalCode?: string;
 	country: string;
 	additionalInfo?: string;
 }
@@ -71,7 +71,7 @@ export interface ISalesBase {
 	isDelivered: boolean;
 	isCancelled: boolean;
 	// =============== rider assignment fields ================
-	assignedRider?: PopulatedDoc<Document>;
+	assignedRider?: Document["_id"];
 	riderAssignmentDate?: Date;
 	riderAcceptedDate?: Date;
 	riderRejectedDate?: Date;
