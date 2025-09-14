@@ -9,9 +9,9 @@ interface FiltersProps {
 	priceRange: [number, number];
 	minPrice: number;
 	maxPrice: number;
-	categories: string[];
+	categories: { name: string; slug: string }[];
 	selectedCategories: string[];
-	brands: string[];
+	brands: { name: string; slug: string }[];
 	selectedBrands: string[];
 }
 
@@ -119,10 +119,7 @@ export default function Filters({
 	};
 
 	return (
-		<form
-			className="w-full max-w-xs p-4 border rounded bg-white flex flex-col gap-6"
-			onSubmit={handleSubmit}
-		>
+		<form className="w-full max-w-xs p-4 border rounded bg-white flex flex-col gap-6" onSubmit={handleSubmit}>
 			{/* =============== search filter =============== */}
 			<div>
 				<label className="block mb-1 text-sm font-medium">Search</label>
@@ -154,9 +151,7 @@ export default function Filters({
 						min={minPrice}
 						max={formValues.priceMax}
 						value={formValues.priceMin}
-						onChange={(e) =>
-							handleInputChange("priceMin", parseInt(e.target.value) || minPrice)
-						}
+						onChange={(e) => handleInputChange("priceMin", parseInt(e.target.value) || minPrice)}
 						className="w-20 border px-1 py-1 rounded"
 					/>
 					<span>-</span>
@@ -165,9 +160,7 @@ export default function Filters({
 						min={formValues.priceMin}
 						max={maxPrice}
 						value={formValues.priceMax}
-						onChange={(e) =>
-							handleInputChange("priceMax", parseInt(e.target.value) || maxPrice)
-						}
+						onChange={(e) => handleInputChange("priceMax", parseInt(e.target.value) || maxPrice)}
 						className="w-20 border px-1 py-1 rounded"
 					/>
 				</div>
@@ -177,16 +170,14 @@ export default function Filters({
 				<label className="block mb-1 text-sm font-medium">Categories</label>
 				<div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
 					{categories.map((cat) => (
-						<label key={cat} className="flex items-center gap-2">
+						<label key={cat.slug} className="flex items-center gap-2">
 							<input
 								type="checkbox"
-								value={cat}
-								checked={formValues.categories.includes(cat)}
-								onChange={(e) =>
-									handleArrayChange("categories", cat, e.target.checked)
-								}
+								value={cat.slug}
+								checked={formValues.categories.includes(cat.slug)}
+								onChange={(e) => handleArrayChange("categories", cat.slug, e.target.checked)}
 							/>
-							{cat}
+							{cat.name}
 						</label>
 					))}
 				</div>
@@ -196,16 +187,14 @@ export default function Filters({
 				<label className="block mb-1 text-sm font-medium">Brands</label>
 				<div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
 					{brands.map((brand) => (
-						<label key={brand} className="flex items-center gap-2">
+						<label key={brand.slug} className="flex items-center gap-2">
 							<input
 								type="checkbox"
-								value={brand}
-								checked={formValues.brands.includes(brand)}
-								onChange={(e) =>
-									handleArrayChange("brands", brand, e.target.checked)
-								}
+								value={brand.slug}
+								checked={formValues.brands.includes(brand.slug)}
+								onChange={(e) => handleArrayChange("brands", brand.slug, e.target.checked)}
 							/>
-							{brand}
+							{brand.name}
 						</label>
 					))}
 				</div>

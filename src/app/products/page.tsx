@@ -19,8 +19,16 @@ function getCategoryName(product: IProduct): string {
 	return (product.category as unknown as { name?: string })?.name ?? "";
 }
 
+function getCategorySlug(product: IProduct): string {
+	return (product.category as unknown as { slug?: string })?.slug ?? "";
+}
+
 function getBrandName(product: IProduct): string {
 	return (product.brand as unknown as { name?: string })?.name ?? "";
+}
+
+function getBrandSlug(product: IProduct): string {
+	return (product.brand as unknown as { slug?: string })?.slug ?? "";
 }
 
 // =============== main page ===============
@@ -35,11 +43,11 @@ export default async function ProductsPage({
 	const categories = (
 		categoriesRes && categoriesRes.success && categoriesRes.categories ? categoriesRes.categories : []
 	)
-		.map((c: { name?: string }) => c?.name || "")
-		.filter(Boolean);
+		.map((c: { name?: string; slug?: string }) => ({ name: c?.name || "", slug: c?.slug || "" }))
+		.filter((c) => c.name && c.slug);
 	const brands = (brandsRes && brandsRes.success && brandsRes.brands ? brandsRes.brands : [])
-		.map((b: { name?: string }) => b?.name || "")
-		.filter(Boolean);
+		.map((b: { name?: string; slug?: string }) => ({ name: b?.name || "", slug: b?.slug || "" }))
+		.filter((b) => b.name && b.slug);
 	const minPrice = Math.min(...products.map((p) => p.salePrice ?? p.price));
 	const maxPrice = Math.max(...products.map((p) => p.salePrice ?? p.price));
 
@@ -64,6 +72,8 @@ export default async function ProductsPage({
 		const title = p.title?.toLowerCase() || "";
 		const brand = getBrandName(p).toLowerCase();
 		const category = getCategoryName(p).toLowerCase();
+		const brandSlug = getBrandSlug(p);
+		const categorySlug = getCategorySlug(p);
 		const price = p.salePrice ?? p.price;
 
 		if (
@@ -77,8 +87,8 @@ export default async function ProductsPage({
 			return false;
 		if (inStock && p.stock <= 0) return false;
 		if (price < priceMin || price > priceMax) return false;
-		if (selectedCategories.length && !selectedCategories.includes(getCategoryName(p))) return false;
-		if (selectedBrands.length && !selectedBrands.includes(getBrandName(p))) return false;
+		if (selectedCategories.length && !selectedCategories.includes(categorySlug)) return false;
+		if (selectedBrands.length && !selectedBrands.includes(brandSlug)) return false;
 		return true;
 	});
 

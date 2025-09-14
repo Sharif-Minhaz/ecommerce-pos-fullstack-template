@@ -77,6 +77,19 @@ export async function getProductsByVendor(vendorId: string) {
 	}
 }
 
+export async function getFeaturedProducts() {
+	try {
+		await connectToDatabase();
+		const products = await Product.find({ isFeatured: true, isActive: true }).sort({ createdAt: -1 });
+		return { success: true, products: convertToPlaintObject(products) };
+	} catch (error: unknown) {
+		if (error instanceof Error) {
+			return { success: false, error: error.message };
+		}
+		return { success: false, error: "An unknown error occurred" };
+	}
+}
+
 // =============== get vendor's own products ================
 export async function getVendorProducts() {
 	try {
