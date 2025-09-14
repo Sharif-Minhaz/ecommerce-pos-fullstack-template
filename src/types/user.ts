@@ -1,4 +1,4 @@
-import { Document, PopulatedDoc } from "mongoose";
+import { Document, PopulatedDoc, Types } from "mongoose";
 import { IProduct } from "./product";
 
 // Base interface without populated fields
@@ -14,6 +14,10 @@ export interface IUserBase {
 	shopDescription?: string;
 	shopImages?: string[];
 	registrationNumber?: string;
+	usedCoupons?: {
+		couponId: Types.ObjectId;
+		usedAt: Date;
+	}[];
 	createdAt: Date;
 	updatedAt: Date;
 	createdBy: string;

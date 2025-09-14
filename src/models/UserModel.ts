@@ -44,6 +44,18 @@ const userSchema = new Schema<IUser>(
 				ref: "Product",
 			},
 		],
+		usedCoupons: [
+			{
+				couponId: {
+					type: Schema.Types.ObjectId,
+					ref: "Coupon",
+				},
+				usedAt: {
+					type: Date,
+					default: Date.now,
+				},
+			},
+		],
 		// Vendor specific fields
 		shopName: {
 			type: String,

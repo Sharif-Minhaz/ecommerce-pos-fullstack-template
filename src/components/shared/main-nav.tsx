@@ -119,6 +119,9 @@ export function MainNav() {
 												<Link href="/my-shop">My Shop</Link>
 											</DropdownMenuItem>
 											<DropdownMenuItem asChild>
+												<Link href="/my-shop/coupons">Coupons</Link>
+											</DropdownMenuItem>
+											<DropdownMenuItem asChild>
 												<Link href="/my-shop/manage-orders">Manage Orders</Link>
 											</DropdownMenuItem>
 										</>

@@ -1,8 +1,9 @@
-import { Document } from "mongoose";
+import { Document, Types } from "mongoose";
 
 export type DiscountType = "percentage" | "flat";
 
 export interface ICoupon extends Document {
+	vendorId: Types.ObjectId;
 	name: string;
 	nameBN: string;
 	description: string;

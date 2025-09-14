@@ -10,7 +10,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Store, Edit3, Save, X, Image as ImageIcon, Trash2, Package, Tag, FolderOpen } from "lucide-react";
+import {
+	Loader2,
+	Store,
+	Edit3,
+	Save,
+	X,
+	Image as ImageIcon,
+	Trash2,
+	Package,
+	Tag,
+	FolderOpen,
+	Percent,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import FloatingActionButton from "@/components/shared/FloatingActionButton";
@@ -209,12 +221,18 @@ export default function MyShopPage() {
 								Categories
 							</Link>
 						</Button>
+						<Button asChild variant="outline">
+							<Link href="/my-shop/coupons">
+								<Percent className="h-4 w-4 mr-2" />
+								Coupons
+							</Link>
+						</Button>
 					</div>
 				</div>
 			</div>
 
 			{/* =============== quick navigation section ================ */}
-			<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
 				<Card className="p-6 text-center hover:shadow-md transition-shadow">
 					<Package className="h-8 w-8 mx-auto mb-2 text-blue-600" />
 					<h3 className="text-lg font-semibold mb-2">Products</h3>
@@ -244,6 +262,17 @@ export default function MyShopPage() {
 					<Link href="/my-shop/categories">
 						<Button size="sm" variant="outline" className="w-full">
 							View Categories
+						</Button>
+					</Link>
+				</Card>
+
+				<Card className="p-6 text-center hover:shadow-md transition-shadow">
+					<Percent className="h-8 w-8 mx-auto mb-2 text-orange-600" />
+					<h3 className="text-lg font-semibold mb-2">Coupons</h3>
+					<p className="text-sm text-gray-600 mb-4">Create discount coupons</p>
+					<Link href="/my-shop/coupons">
+						<Button size="sm" variant="outline" className="w-full">
+							View Coupons
 						</Button>
 					</Link>
 				</Card>

@@ -1,31 +1,71 @@
 "use client";
 
 import React, { useState } from "react";
+import { useSession } from "next-auth/react";
 import { useCart } from "@/hooks/useCart";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
 import Image from "next/image";
-import Link from "next/link";
+import { validateCoupon } from "@/app/actions/coupon";
 
 export default function CartPage() {
+	const { data: session } = useSession();
 	const { cart, updateQuantity, removeFromCart, subtotal, totalItems, isMounted } = useCart();
 	const [coupon, setCoupon] = useState("");
 	const [couponApplied, setCouponApplied] = useState(false);
 	const [discount, setDiscount] = useState(0);
+	const [couponData, setCouponData] = useState<{ _id: string; code: string; name: string } | null>(null);
+	const [vendorTotal, setVendorTotal] = useState(0);
+	const [applicableItems, setApplicableItems] = useState(0);
+	const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
 	const deliveryCharge = subtotal >= 300 ? 0 : 20;
 
 	// =============== handle coupon apply ================
-	const handleApplyCoupon = () => {
-		// =============== fake coupon logic ================
-		if (coupon === "FREE20") {
-			setDiscount(20);
-			setCouponApplied(true);
-		} else {
-			setDiscount(0);
-			setCouponApplied(false);
+	const handleApplyCoupon = async () => {
+		if (!coupon.trim()) {
+			toast.error("Please enter a coupon code");
+			return;
 		}
+
+		try {
+			setIsValidatingCoupon(true);
+			const result = await validateCoupon(coupon, cart, session?.user?.id);
+
+			if (result.success) {
+				setDiscount(result.discountAmount || 0);
+				setCouponData(result.coupon);
+				setVendorTotal(result.vendorTotal || 0);
+				setApplicableItems(result.applicableItems || 0);
+				setCouponApplied(true);
+				toast.success(`Coupon applied! You saved ৳${result.discountAmount || 0}`);
+			} else {
+				setDiscount(0);
+				setCouponData(null);
+				setVendorTotal(0);
+				setApplicableItems(0);
+				setCouponApplied(false);
+				toast.error(result.error || "Invalid coupon code");
+			}
+		} catch (error) {
+			console.error("Error validating coupon:", error);
+			toast.error("An error occurred while validating the coupon");
+		} finally {
+			setIsValidatingCoupon(false);
+		}
+	};
+
+	// =============== handle coupon remove ================
+	const handleRemoveCoupon = () => {
+		setCoupon("");
+		setDiscount(0);
+		setCouponData(null);
+		setVendorTotal(0);
+		setApplicableItems(0);
+		setCouponApplied(false);
+		toast.success("Coupon removed");
 	};
 
 	// =============== calculate total ================
@@ -141,12 +181,35 @@ export default function CartPage() {
 								value={coupon}
 								onChange={(e) => setCoupon(e.target.value)}
 								className="flex-1"
+								disabled={couponApplied}
 							/>
-							<Button onClick={handleApplyCoupon} size="sm">
-								Apply
-							</Button>
+							{couponApplied ? (
+								<Button onClick={handleRemoveCoupon} size="sm" variant="outline">
+									Remove
+								</Button>
+							) : (
+								<Button
+									onClick={handleApplyCoupon}
+									size="sm"
+									disabled={isValidatingCoupon || !coupon.trim()}
+								>
+									{isValidatingCoupon ? "Validating..." : "Apply"}
+								</Button>
+							)}
 						</div>
-						{couponApplied && <div className="text-green-600 text-xs mb-2">Coupon applied! -BDT20</div>}
+						{couponApplied && couponData && (
+							<div className="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
+								<div className="text-green-800 text-sm font-medium mb-1">
+									✓ Coupon Applied: {couponData.code}
+								</div>
+								<div className="text-green-700 text-xs">
+									{couponData.name} - Applied to {applicableItems} item(s) from this vendor
+								</div>
+								<div className="text-green-700 text-xs">
+									Vendor total: ৳{vendorTotal} | Discount: ৳{discount}
+								</div>
+							</div>
+						)}
 						<div className="flex flex-col gap-2 text-sm mb-4">
 							<div className="flex justify-between">
 								<span>Subtotal ({totalItems} items)</span>
@@ -157,9 +220,9 @@ export default function CartPage() {
 								<span>BDT {deliveryCharge === 0 ? "Free" : deliveryCharge.toFixed(2)}</span>
 							</div>
 							{discount > 0 && (
-								<div className="flex justify-between text-red-500">
-									<span>You saved</span>
-									<span>- BDT {discount.toFixed(2)}</span>
+								<div className="flex justify-between text-green-600">
+									<span>Coupon Discount ({couponData?.code})</span>
+									<span>- ৳{discount.toFixed(2)}</span>
 								</div>
 							)}
 						</div>
@@ -167,8 +230,20 @@ export default function CartPage() {
 							<span>Total</span>
 							<span>BDT {total.toFixed(2)}</span>
 						</div>
-						<Button className="w-full" size="lg" disabled={cart.length === 0} asChild>
-							<Link href="/checkout">Proceed to Checkout</Link>
+						<Button
+							className="w-full"
+							size="lg"
+							disabled={cart.length === 0}
+							onClick={() => {
+								if (couponApplied && couponData) {
+									const couponInfo = encodeURIComponent(JSON.stringify(couponData));
+									window.location.href = `/checkout?coupon=${couponData.code}&discount=${discount}&couponInfo=${couponInfo}`;
+								} else {
+									window.location.href = "/checkout";
+								}
+							}}
+						>
+							Proceed to Checkout
 						</Button>
 					</Card>
 				</div>

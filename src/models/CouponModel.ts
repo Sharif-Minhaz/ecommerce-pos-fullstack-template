@@ -1,8 +1,13 @@
 import mongoose, { Schema } from "mongoose";
 import { ICoupon } from "@/types/coupon";
 
-const couponSchema = new Schema<ICoupon>(
+const couponSchema = new Schema(
 	{
+		vendorId: {
+			type: Schema.Types.ObjectId,
+			ref: "User",
+			required: [true, "Vendor ID is required"],
+		},
 		name: {
 			type: String,
 			required: [true, "Coupon name is required"],
@@ -103,5 +108,6 @@ const couponSchema = new Schema<ICoupon>(
 couponSchema.index({ code: 1 }, { unique: true });
 couponSchema.index({ validTill: 1 });
 couponSchema.index({ isActive: 1 });
+couponSchema.index({ vendorId: 1 });
 
 export const Coupon = mongoose.models.Coupon || mongoose.model<ICoupon>("Coupon", couponSchema);

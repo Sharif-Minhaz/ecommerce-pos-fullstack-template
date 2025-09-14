@@ -2,7 +2,7 @@
 
 import SSLCommerzIcon from "@/assets/ssl.png";
 import StripeIcon from "@/assets/stripe.png";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useCart } from "@/hooks/useCart";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,9 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "
 import { useForm } from "react-hook-form";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { createSalesOrder, CreateOrderInput } from "../actions/sales";
+import { markCouponAsUsed } from "../actions/coupon";
 
 const cities = ["Dhaka", "Chattogram", "Khulna", "Rajshahi", "Barisal", "Sylhet", "Rangpur", "Mymensingh"];
 const paymentMethods = [
@@ -32,11 +34,34 @@ type CheckoutForm = {
 
 export default function CheckoutPage() {
 	// =============== get cart info ================
+	const { data: session } = useSession();
 	const { cart, subtotal, totalItems, isMounted, clearCart } = useCart();
 	const [step, setStep] = useState(1);
 	const [selectedPayment, setSelectedPayment] = useState<string>("");
 	const router = useRouter();
 	const [placing, setPlacing] = useState<boolean>(false);
+
+	// =============== coupon state ================
+	const [couponData, setCouponData] = useState<any>(null);
+	const [couponDiscount, setCouponDiscount] = useState(0);
+
+	// =============== get coupon data from URL parameters ================
+	useEffect(() => {
+		const urlParams = new URLSearchParams(window.location.search);
+		const couponCode = urlParams.get("coupon");
+		const discount = urlParams.get("discount");
+		const couponInfo = urlParams.get("couponInfo");
+
+		if (couponCode && discount && couponInfo) {
+			try {
+				const parsedCouponInfo = JSON.parse(decodeURIComponent(couponInfo));
+				setCouponData(parsedCouponInfo);
+				setCouponDiscount(parseFloat(discount));
+			} catch (error) {
+				console.error("Failed to parse coupon info:", error);
+			}
+		}
+	}, []);
 
 	// =============== form setup ================
 	const form = useForm<CheckoutForm>({
@@ -63,7 +88,7 @@ export default function CheckoutPage() {
 	// =============== calculate delivery charge ================
 	const deliveryCharge = subtotal >= 300 ? 0 : 20;
 	const codCharge = selectedPayment === "cod" ? 10 : 0;
-	const total = subtotal + deliveryCharge + codCharge;
+	const total = subtotal + deliveryCharge + codCharge - couponDiscount;
 
 	// =============== place order ================
 	const handlePlaceOrder = async () => {
@@ -84,12 +109,21 @@ export default function CheckoutPage() {
 				},
 				paymentMethod: selectedPayment as CreateOrderInput["paymentMethod"],
 				deliveryCharge,
-				couponDiscount: 0,
+				couponDiscount: couponDiscount,
 				discount: 0,
 				taxAmount: 0,
 			};
 			const res = await createSalesOrder(payload);
 			if (res.success) {
+				// =============== mark coupon as used if applied ================
+				if (couponData && couponDiscount > 0 && session?.user?.id) {
+					try {
+						await markCouponAsUsed(couponData._id, session.user.id);
+					} catch (error) {
+						console.error("Failed to mark coupon as used:", error);
+						// Don't fail the order if coupon marking fails
+					}
+				}
 				clearCart();
 				router.push("/my-orders");
 			} else {
