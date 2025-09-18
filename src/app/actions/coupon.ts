@@ -299,17 +299,21 @@ export async function validateCoupon(code: string, cartItems: any[], userId?: st
 		if (userId) {
 			const user = await User.findById(userId).select("usedCoupons");
 			if (
-				user?.usedCoupons?.some((used: { couponId: any }) => used.couponId.toString() === coupon._id.toString())
+				user?.usedCoupons?.some(
+					(used: { couponId: string }) => used.couponId.toString() === coupon._id.toString()
+				)
 			) {
 				throw new Error("You have already used this coupon");
 			}
 		}
 
 		// =============== filter cart items by coupon vendor ================
-		const vendorItems = cartItems.filter(
-			(item: { product: { vendorId?: any } }) =>
-				item.product.vendorId && item.product.vendorId.toString() === coupon.vendorId.toString()
-		);
+		// supports multiple shapes for vendor on product: vendor (id string), vendor (populated {_id}), or legacy vendorId
+		const vendorItems = cartItems.filter((item: { product: { vendor?: string; vendorId?: string } }) => {
+			const vendorRef = item.product.vendor ?? item.product.vendorId;
+			const productVendorId = (vendorRef?._id ?? vendorRef)?.toString?.();
+			return productVendorId && productVendorId === coupon.vendorId.toString();
+		});
 
 		if (vendorItems.length === 0) {
 			throw new Error("No products from this vendor in your cart");

@@ -90,18 +90,6 @@ export default function UpdateDeliveryPage({ params }: UpdateDeliveryPageProps) 
 						/>
 					</div>
 
-					<div>
-						<Label htmlFor="proof">Delivery Proof (Image URL)</Label>
-						<Textarea
-							id="proof"
-							value={proof}
-							onChange={(e) => setProof(e.target.value)}
-							placeholder="Enter image URL as proof of delivery..."
-							className="mt-1"
-							rows={2}
-						/>
-					</div>
-
 					<div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
 						<h4 className="font-medium text-blue-800 mb-2">Status Guidelines:</h4>
 						<ul className="text-sm text-blue-700 space-y-1">

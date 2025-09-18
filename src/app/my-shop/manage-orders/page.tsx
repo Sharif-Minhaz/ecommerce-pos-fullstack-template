@@ -12,7 +12,17 @@ export default async function ManageOrdersPage() {
 		return <div className="container mx-auto py-8 px-2 max-w-7xl">Failed to load orders</div>;
 	}
 
-	const riders = ridersResult.success ? ridersResult.riders : [];
+	// lightweight rider type for ui mapping
+	type RiderLite = {
+		_id: string;
+		user?: { name?: string; phoneNumber?: string };
+		vehicleInfo?: { vehicleType?: string; brand?: string; model?: string };
+		rating?: number;
+		status?: string;
+		serviceAreas: string[];
+	};
+
+	const riders: RiderLite[] = ridersResult.success ? (ridersResult.riders as RiderLite[]) : [];
 	type PopulatedItem = { _id: string; quantity: number; product?: { title: string; gallery?: string[] } };
 	type PopulatedOrder = {
 		_id: string;
@@ -22,7 +32,7 @@ export default async function ManageOrdersPage() {
 		createdAt: string;
 		deliveryDetails?: { name?: string; city?: string };
 		deliveryStatus?: string;
-		assignedRider?: any;
+		assignedRider?: RiderLite;
 		items: PopulatedItem[];
 	};
 	const orders = ordersResult.orders as PopulatedOrder[];
@@ -100,7 +110,9 @@ export default async function ManageOrdersPage() {
 											<div className="border-t pt-4">
 												<h4 className="font-medium mb-2">Assign Rider</h4>
 												<form
-													action={assignRiderToOrderForm}
+													action={async (formData) => {
+														await assignRiderToOrderForm(formData);
+													}}
 													className="flex items-center gap-2"
 												>
 													<input type="hidden" name="orderId" value={String(o._id)} />
@@ -111,15 +123,15 @@ export default async function ManageOrdersPage() {
 													>
 														<option value="">Select a rider</option>
 														{riders
-															.filter((rider: any) =>
+															.filter((rider: RiderLite) =>
 																rider.serviceAreas.includes(
-																	o.deliveryDetails?.city?.toLowerCase()
+																	(o.deliveryDetails?.city || "").toLowerCase()
 																)
 															)
-															.map((rider: any) => (
+															.map((rider: RiderLite) => (
 																<option key={rider._id} value={rider._id}>
-																	{rider.user.name} - {rider.vehicleInfo.vehicleType}{" "}
-																	({rider.rating}⭐)
+																	{rider.user?.name} -{" "}
+																	{rider.vehicleInfo?.vehicleType} ({rider.rating}⭐)
 																</option>
 															))}
 													</select>
@@ -130,8 +142,10 @@ export default async function ManageOrdersPage() {
 														Assign
 													</button>
 												</form>
-												{riders.filter((rider: any) =>
-													rider.serviceAreas.includes(o.deliveryDetails?.city?.toLowerCase())
+												{riders.filter((rider: RiderLite) =>
+													rider.serviceAreas.includes(
+														(o.deliveryDetails?.city || "").toLowerCase()
+													)
 												).length === 0 && (
 													<p className="text-sm text-muted-foreground mt-1">
 														No riders available for {o.deliveryDetails?.city}
@@ -144,7 +158,43 @@ export default async function ManageOrdersPage() {
 											<div className="border-t pt-4">
 												<h4 className="font-medium mb-2">Assigned Rider</h4>
 												<div className="text-sm text-muted-foreground">
-													Rider has been assigned to this order
+													{/* =============== rider quick summary ================ */}
+													<span className="font-medium text-foreground">
+														{o.assignedRider?.user?.name || "Unknown Rider"}
+													</span>
+													{typeof o.assignedRider?.rating === "number" && (
+														<span className="ml-2">({o.assignedRider.rating}⭐)</span>
+													)}
+												</div>
+												<div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+													<div>
+														<span className="text-muted-foreground">Phone: </span>
+														<span>{o.assignedRider?.user?.phoneNumber || "N/A"}</span>
+													</div>
+													<div>
+														<span className="text-muted-foreground">Vehicle: </span>
+														<span>
+															{o.assignedRider?.vehicleInfo?.vehicleType || "N/A"}
+															{o.assignedRider?.vehicleInfo?.brand
+																? ` • ${o.assignedRider.vehicleInfo.brand}`
+																: ""}
+															{o.assignedRider?.vehicleInfo?.model
+																? ` ${o.assignedRider.vehicleInfo.model}`
+																: ""}
+														</span>
+													</div>
+													<div>
+														<span className="text-muted-foreground">Status: </span>
+														<Badge variant="outline">
+															{o.assignedRider?.status || "unknown"}
+														</Badge>
+													</div>
+												</div>
+												<div className="text-sm mt-4">
+													Current Delivery Status:{" "}
+													<Badge variant="outline" className="bg-blue-100 text-blue-800">
+														{o.deliveryStatus}
+													</Badge>
 												</div>
 											</div>
 										)}
@@ -159,6 +209,10 @@ export default async function ManageOrdersPage() {
 														"pending",
 														"approved",
 														"processing",
+														"assigned",
+														"accepted",
+														"picked_up",
+														"failed",
 														"shipped",
 														"delivered",
 														"cancelled",

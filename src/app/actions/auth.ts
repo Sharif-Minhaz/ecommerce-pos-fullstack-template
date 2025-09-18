@@ -5,6 +5,7 @@ import { connectToDatabase } from "@/db";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { convertToPlaintObject } from "@/lib/utils";
 
 export async function registerUser(formData: FormData) {
 	try {
@@ -63,7 +64,7 @@ export async function getUserProfile() {
 			throw new Error("User not found");
 		}
 
-		return { success: true, user };
+		return { success: true, user: convertToPlaintObject(user) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };
@@ -102,7 +103,7 @@ export async function updateUserProfile(formData: FormData) {
 		}
 
 		revalidatePath("/profile");
-		return { success: true, user: updatedUser };
+		return { success: true, user: convertToPlaintObject(updatedUser) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };

@@ -76,9 +76,11 @@ export default function ProfilePage() {
 					setHasRiderProfile(null);
 				}
 			} else {
+				console.error(result);
 				toast.error(result.error || "Failed to fetch profile");
 			}
-		} catch {
+		} catch (err) {
+			console.error(err);
 			toast.error("An error occurred while fetching profile");
 		} finally {
 			setLoading(false);

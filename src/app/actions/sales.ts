@@ -118,6 +118,11 @@ export async function getVendorOrders() {
 				path: "items.product",
 				select: "title vendor",
 			})
+			.populate({
+				path: "assignedRider",
+				select: "user rating status vehicleInfo serviceAreas",
+				populate: { path: "user", select: "name phoneNumber" },
+			})
 			.sort({ createdAt: -1 });
 
 		const filtered = orders.filter((o: { items: Array<{ product?: { vendor?: string } }> }) =>
