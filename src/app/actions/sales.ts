@@ -25,7 +25,7 @@ export type CreateOrderInput = {
 		name?: string;
 		email?: string;
 	};
-	paymentMethod: "cod" | "stripe" | "sslcommerz";
+	paymentMethod: "cod" | "stripe" | "sslcommerz" | "cash";
 	deliveryCharge: number;
 	couponDiscount?: number;
 	discount?: number;
@@ -41,14 +41,14 @@ export async function createSalesOrder(input: CreateOrderInput) {
 
 		if (!input.items || input.items.length === 0) throw new Error("Order must have at least one item");
 
-		const items = input.items.map((it) => ({
-			product: new Types.ObjectId(it.productId),
-			quantity: it.quantity,
-			unitPrice: it.unitPrice,
-			totalPrice: it.unitPrice * it.quantity,
+		const items = input.items.map((item) => ({
+			product: new Types.ObjectId(item.productId),
+			quantity: item.quantity,
+			unitPrice: item.unitPrice,
+			totalPrice: item.unitPrice * item.quantity,
 		}));
 
-		const subtotal = items.reduce((sum, i) => sum + i.totalPrice, 0);
+		const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
 		const discount = input.discount ?? 0;
 		const couponDiscount = input.couponDiscount ?? 0;
 		const taxAmount = input.taxAmount ?? 0;
@@ -125,8 +125,8 @@ export async function getVendorOrders() {
 			})
 			.sort({ createdAt: -1 });
 
-		const filtered = orders.filter((o: { items: Array<{ product?: { vendor?: string } }> }) =>
-			o.items.some((it) => String(it.product?.vendor) === String(session.user.id))
+		const filtered = orders.filter((order: { items: Array<{ product?: { vendor?: string } }> }) =>
+			order.items.some((item) => String(item.product?.vendor) === String(session.user.id))
 		);
 		return { success: true, orders: convertToPlaintObject(filtered) };
 	} catch (error: unknown) {
@@ -148,7 +148,7 @@ export type CreatePosSaleInput = {
 	deliveryCharge?: number;
 	discount?: number;
 	taxAmount?: number;
-	paymentMethod?: "cod" | "stripe" | "sslcommerz";
+	paymentMethod?: "cod" | "stripe" | "sslcommerz" | "cash";
 	totalOverride?: number; // allow editing overall price
 };
 
@@ -167,21 +167,22 @@ export async function createPosSale(input: CreatePosSaleInput) {
 		const products = await Product.find({ _id: { $in: productIds }, vendor: session.user.id });
 		const productMap = new Map(products.map((p) => [String(p._id), p]));
 
-		for (const it of input.items) {
-			const p = productMap.get(it.productId);
-			if (!p) throw new Error("Product not found or not owned by vendor");
-			if (typeof it.quantity !== "number" || it.quantity <= 0) throw new Error("Invalid quantity");
-			if (p.stock < it.quantity) throw new Error(`Insufficient stock for product ${p.title}`);
+		for (const item of input.items) {
+			const productItem = productMap.get(item.productId);
+			if (!productItem) throw new Error("Product not found or not owned by vendor");
+			if (typeof item.quantity !== "number" || item.quantity <= 0) throw new Error("Invalid quantity");
+			if (productItem.stock < item.quantity)
+				throw new Error(`Insufficient stock for product ${productItem.title}`);
 		}
 
-		const items = input.items.map((it) => ({
-			product: new Types.ObjectId(it.productId),
-			quantity: it.quantity,
-			unitPrice: it.unitPrice,
-			totalPrice: it.unitPrice * it.quantity,
+		const items = input.items.map((item) => ({
+			product: new Types.ObjectId(item.productId),
+			quantity: item.quantity,
+			unitPrice: item.unitPrice,
+			totalPrice: item.unitPrice * item.quantity,
 		}));
 
-		const rawSubtotal = items.reduce((sum, i) => sum + i.totalPrice, 0);
+		const rawSubtotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
 		const deliveryCharge = input.deliveryCharge ?? 0;
 		const discount = input.discount ?? 0;
 		const taxAmount = input.taxAmount ?? 0;
@@ -191,9 +192,46 @@ export async function createPosSale(input: CreatePosSaleInput) {
 			totalAmount = input.totalOverride;
 		}
 
-		const sales = await Sales.create({
+		// =============== check delivery and customer info independently ================
+		const hasDeliveryInfo = input.customerAddress || input.customerCity || input.customerPostalCode;
+		const hasCustomerInfo = input.customerName || input.customerPhone || input.customerEmail;
+
+		const salesData: {
+			orderNumber: string;
+			orderName: string;
+			items: Array<{
+				product: Types.ObjectId;
+				quantity: number;
+				unitPrice: number;
+				totalPrice: number;
+			}>;
+			actualPrice: number;
+			deliveryCharge: number;
+			subtotal: number;
+			discount: number;
+			couponDiscount: number;
+			totalAmount: number;
+			paymentMethod: string;
+			status: string;
+			user: Types.ObjectId;
+			paid: number;
+			due: number;
+			taxAmount: number;
+			notes?: string;
+			isPaid: boolean;
+			isDelivered: boolean;
+			deliveryDetails?: {
+				name: string;
+				phone: string;
+				email: string;
+				address: string;
+				city: string;
+				postalCode: string;
+				country: string;
+			};
+		} = {
 			orderNumber: crypto.randomUUID(),
-			orderName: input.customerName ? `POS Sale - ${input.customerName}` : "POS Sale",
+			orderName: hasCustomerInfo ? `POS Sale - ${input.customerName || "Customer"}` : "POS Sale",
 			items,
 			actualPrice: rawSubtotal,
 			deliveryCharge,
@@ -201,10 +239,20 @@ export async function createPosSale(input: CreatePosSaleInput) {
 			discount,
 			couponDiscount: 0,
 			totalAmount,
-			paymentMethod: input.paymentMethod ?? "cod",
+			paymentMethod: input.paymentMethod ?? "cash",
 			status: "delivered", // POS sales are considered delivered
 			user: new Types.ObjectId(session.user.id),
-			deliveryDetails: {
+			paid: totalAmount,
+			due: 0,
+			taxAmount,
+			notes: input.notes,
+			isPaid: true,
+			isDelivered: true,
+		};
+
+		// =============== add delivery details if delivery info is provided (independent of customer info) ================
+		if (hasDeliveryInfo) {
+			salesData.deliveryDetails = {
 				name: input.customerName || "Walk-in Customer",
 				phone: input.customerPhone || "",
 				email: input.customerEmail || "",
@@ -212,20 +260,16 @@ export async function createPosSale(input: CreatePosSaleInput) {
 				city: input.customerCity || "",
 				postalCode: input.customerPostalCode || "",
 				country: "Bangladesh",
-			},
-			paid: totalAmount,
-			due: 0,
-			taxAmount,
-			notes: input.notes,
-			isPaid: true,
-			isDelivered: true,
-		});
+			};
+		}
+
+		const sales = await Sales.create(salesData);
 
 		// decrement stock
-		for (const it of input.items) {
+		for (const item of input.items) {
 			await Product.updateOne(
-				{ _id: it.productId, vendor: session.user.id },
-				{ $inc: { stock: -Math.abs(it.quantity) } }
+				{ _id: item.productId, vendor: session.user.id },
+				{ $inc: { stock: -Math.abs(item.quantity) } }
 			);
 		}
 

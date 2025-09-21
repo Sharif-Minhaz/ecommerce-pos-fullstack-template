@@ -3,7 +3,7 @@ import { IUser } from "./user";
 import { IProduct } from "./product";
 import { ICoupon } from "./coupon";
 
-export type PaymentMethod = "cod" | "stripe" | "sslcommerz";
+export type PaymentMethod = "cod" | "stripe" | "sslcommerz" | "cash";
 export type OrderStatus = "pending" | "approved" | "rejected" | "processing" | "shipped" | "delivered" | "cancelled";
 
 export type DeliveryStatus =

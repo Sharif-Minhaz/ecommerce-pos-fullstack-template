@@ -12,6 +12,7 @@ import { createPosSale } from "@/app/actions/sales";
 import { createPosPurchase, getVendorPurchases } from "@/app/actions/purchase";
 import { getVendorProducts } from "@/app/actions/product";
 import { getVendorDeliveredSales } from "@/app/actions/sales";
+import { showReadAbleCurrency } from "@/lib/utils";
 
 export default function PosDashboardPage() {
 	const { data: session, status } = useSession();
@@ -122,7 +123,7 @@ export default function PosDashboardPage() {
 
 	// sales totals
 	const salesSubtotal = useMemo(
-		() => salesItems.reduce((s, it) => s + (it.unitPrice || 0) * (it.quantity || 0), 0),
+		() => salesItems.reduce((s, item) => s + (item.unitPrice || 0) * (item.quantity || 0), 0),
 		[salesItems]
 	);
 	const computedSaleTotal = useMemo(() => {
@@ -135,7 +136,7 @@ export default function PosDashboardPage() {
 
 	// purchase totals
 	const purchaseSubtotal = useMemo(
-		() => purchaseItems.reduce((s, it) => s + (it.purchasePrice || 0) * (it.quantity || 0), 0),
+		() => purchaseItems.reduce((s, item) => s + (item.purchasePrice || 0) * (item.quantity || 0), 0),
 		[purchaseItems]
 	);
 	const purchaseTotal = useMemo(() => {
@@ -150,18 +151,23 @@ export default function PosDashboardPage() {
 
 	const handleAddSalesRow = () => setSalesItems((prev) => [...prev, { productId: "", quantity: 1, unitPrice: 0 }]);
 	const handleRemoveSalesRow = (idx: number) =>
-		setSalesItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev));
+		setSalesItems((prev) => (prev.length > 1 ? prev.filter((_, index) => index !== idx) : prev));
 
 	const handleAddPurchaseRow = () =>
 		setPurchaseItems((prev) => [...prev, { productId: "", title: "", sku: "", quantity: 1, purchasePrice: 0 }]);
 	const handleRemovePurchaseRow = (idx: number) =>
-		setPurchaseItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev));
+		setPurchaseItems((prev) => (prev.length > 1 ? prev.filter((_, index) => index !== idx) : prev));
 
 	const submitSale = async () => {
-		const valid = salesItems.every((i) => i.productId && i.quantity > 0);
-		if (!valid) return;
+		const valid = salesItems.every((item) => item.productId && item.quantity > 0);
+		if (!valid) return console.error("Invalid sales items");
+
 		const payload = {
-			items: salesItems.map((i) => ({ productId: i.productId, quantity: i.quantity, unitPrice: i.unitPrice })),
+			items: salesItems.map((item) => ({
+				productId: item.productId,
+				quantity: item.quantity,
+				unitPrice: item.unitPrice,
+			})),
 			customerName,
 			customerPhone,
 			customerEmail,
@@ -205,12 +211,12 @@ export default function PosDashboardPage() {
 		)
 			return;
 		const payload = {
-			items: purchaseItems.map((i) => ({
-				productId: i.productId || undefined,
-				title: i.title || undefined,
-				sku: i.sku || undefined,
-				quantity: i.quantity,
-				purchasePrice: i.purchasePrice,
+			items: purchaseItems.map((item) => ({
+				productId: item.productId || undefined,
+				title: item.title || undefined,
+				sku: item.sku || undefined,
+				quantity: item.quantity,
+				purchasePrice: item.purchasePrice,
 			})),
 			deliveryCharge: Number(purchaseMeta.deliveryCharge) || 0,
 			discount: Number(purchaseMeta.discount) || 0,
@@ -263,18 +269,22 @@ export default function PosDashboardPage() {
 							<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 								<div className="border rounded-md p-4">
 									<div className="text-sm text-muted-foreground">Total Sales (delivered)</div>
-									<div className="text-2xl font-semibold">৳{totalSalesAmount.toFixed(2)}</div>
+									<div className="text-2xl font-semibold">
+										৳{showReadAbleCurrency(totalSalesAmount)}
+									</div>
 								</div>
 								<div className="border rounded-md p-4">
 									<div className="text-sm text-muted-foreground">Total Purchases</div>
-									<div className="text-2xl font-semibold">৳{totalPurchaseAmount.toFixed(2)}</div>
+									<div className="text-2xl font-semibold">
+										৳{showReadAbleCurrency(totalPurchaseAmount)}
+									</div>
 								</div>
 								<div className="border rounded-md p-4">
 									<div className="text-sm text-muted-foreground">Benefit / Profit</div>
 									<div
 										className={`text-2xl font-semibold ${profitAmount >= 0 ? "" : "text-red-600"}`}
 									>
-										৳{profitAmount.toFixed(2)}
+										৳{showReadAbleCurrency(profitAmount)}
 									</div>
 								</div>
 								<div className="border rounded-md p-4">
@@ -287,7 +297,9 @@ export default function PosDashboardPage() {
 								</div>
 								<div className="border rounded-md p-4">
 									<div className="text-sm text-muted-foreground">Inventory Retail Value</div>
-									<div className="text-2xl font-semibold">৳{totalStockRetailValue.toFixed(2)}</div>
+									<div className="text-2xl font-semibold">
+										৳{showReadAbleCurrency(totalStockRetailValue)}
+									</div>
 								</div>
 							</div>
 						</CardContent>
@@ -305,7 +317,7 @@ export default function PosDashboardPage() {
 									<div className="col-span-2">Qty</div>
 									<div className="col-span-2 text-right">Total</div>
 								</div>
-								{salesItems.map((row, idx) => {
+								{salesItems.map((item, idx) => {
 									return (
 										<div
 											key={idx}
@@ -313,10 +325,10 @@ export default function PosDashboardPage() {
 										>
 											<select
 												className="col-span-6 border rounded-md h-10 px-2 bg-background"
-												value={row.productId}
+												value={item.productId}
 												onChange={(e) => {
 													const id = e.target.value;
-													const p = products.find((pr) => pr._id === id);
+													const p = products.find((product) => product._id === id);
 													setSalesItems((prev) => {
 														const copy = [...prev];
 														copy[idx] = {
@@ -329,16 +341,16 @@ export default function PosDashboardPage() {
 												}}
 											>
 												<option value="">Select product</option>
-												{products.map((p) => (
-													<option key={p._id} value={p._id}>
-														{p.title} (Stock: {p.stock})
+												{products.map((product) => (
+													<option key={product._id} value={product._id}>
+														{product.title} (Stock: {product.stock})
 													</option>
 												))}
 											</select>
 											<Input
 												className="col-span-2"
 												type="number"
-												value={row.unitPrice}
+												value={item.unitPrice}
 												onChange={(e) =>
 													setSalesItems((prev) => {
 														const copy = [...prev];
@@ -351,7 +363,7 @@ export default function PosDashboardPage() {
 												className="col-span-2"
 												type="number"
 												min={1}
-												value={row.quantity}
+												value={item.quantity}
 												onChange={(e) =>
 													setSalesItems((prev) => {
 														const copy = [...prev];
@@ -364,7 +376,7 @@ export default function PosDashboardPage() {
 												}
 											/>
 											<div className="col-span-2 text-right font-medium">
-												{((row.unitPrice || 0) * (row.quantity || 0)).toFixed(2)}
+												{showReadAbleCurrency((item.unitPrice || 0) * (item.quantity || 0))}
 											</div>
 											<div className="col-span-12 flex justify-between mt-2">
 												<Button
@@ -451,11 +463,11 @@ export default function PosDashboardPage() {
 								<div className="mt-4 bg-gray-50 p-4 rounded-md border">
 									<div className="flex justify-between text-sm">
 										<span>Subtotal</span>
-										<span>{salesSubtotal.toFixed(2)}</span>
+										<span>{showReadAbleCurrency(salesSubtotal)}</span>
 									</div>
 									<div className="flex justify-between text-sm">
 										<span>Computed Total</span>
-										<span>{computedSaleTotal.toFixed(2)}</span>
+										<span>{showReadAbleCurrency(computedSaleTotal)}</span>
 									</div>
 								</div>
 								<Button className="w-full mt-4" onClick={submitSale}>
@@ -478,14 +490,14 @@ export default function PosDashboardPage() {
 									<div className="col-span-2">SKU</div>
 									<div className="col-span-2 text-right">Total</div>
 								</div>
-								{purchaseItems.map((row, idx) => (
+								{purchaseItems.map((product, idx) => (
 									<div
 										key={idx}
 										className="grid grid-cols-12 gap-3 items-center border rounded-md p-3"
 									>
 										<select
 											className="col-span-4 border rounded-md h-10 px-2 bg-background"
-											value={row.productId}
+											value={product.productId}
 											onChange={(e) =>
 												setPurchaseItems((prev) => {
 													const copy = [...prev];
@@ -495,16 +507,16 @@ export default function PosDashboardPage() {
 											}
 										>
 											<option value="">-- Select existing --</option>
-											{products.map((p) => (
-												<option key={p._id} value={p._id}>
-													{p.title}
+											{products.map((product) => (
+												<option key={product._id} value={product._id}>
+													{product.title}
 												</option>
 											))}
 										</select>
 										<Input
 											className="col-span-2"
 											type="number"
-											value={row.purchasePrice}
+											value={product.purchasePrice}
 											onChange={(e) =>
 												setPurchaseItems((prev) => {
 													const copy = [...prev];
@@ -517,7 +529,7 @@ export default function PosDashboardPage() {
 											className="col-span-2"
 											type="number"
 											min={1}
-											value={row.quantity}
+											value={product.quantity}
 											onChange={(e) =>
 												setPurchaseItems((prev) => {
 													const copy = [...prev];
@@ -529,7 +541,7 @@ export default function PosDashboardPage() {
 										<Input
 											className="col-span-2"
 											placeholder="SKU (optional)"
-											value={row.sku}
+											value={product.sku}
 											onChange={(e) =>
 												setPurchaseItems((prev) => {
 													const copy = [...prev];
@@ -539,13 +551,15 @@ export default function PosDashboardPage() {
 											}
 										/>
 										<div className="col-span-2 text-right font-medium">
-											{((row.purchasePrice || 0) * (row.quantity || 0)).toFixed(2)}
+											{showReadAbleCurrency(
+												(product.purchasePrice || 0) * (product.quantity || 0)
+											)}
 										</div>
 										<div className="col-span-12 grid grid-cols-12 gap-3">
 											<Input
 												className="col-span-12"
 												placeholder="Product title (if new)"
-												value={row.title}
+												value={product.title}
 												onChange={(e) =>
 													setPurchaseItems((prev) => {
 														const copy = [...prev];
@@ -663,11 +677,11 @@ export default function PosDashboardPage() {
 								<div className="mt-4 bg-gray-50 p-4 rounded-md border">
 									<div className="flex justify-between text-sm">
 										<span>Subtotal</span>
-										<span>{purchaseSubtotal.toFixed(2)}</span>
+										<span>{showReadAbleCurrency(purchaseSubtotal)}</span>
 									</div>
 									<div className="flex justify-between text-sm">
 										<span>Total</span>
-										<span>{purchaseTotal.toFixed(2)}</span>
+										<span>{showReadAbleCurrency(purchaseTotal)}</span>
 									</div>
 								</div>
 								<Button className="w-full mt-4" onClick={submitPurchase}>
@@ -685,13 +699,17 @@ export default function PosDashboardPage() {
 								<CardTitle className="mb-4 text-lg font-bold">Delivered Sales</CardTitle>
 								<div className="space-y-2 text-sm">
 									{historySales.length === 0 && <div>No delivered sales yet.</div>}
-									{historySales.map((o) => (
-										<div key={o._id} className="border rounded-md p-3">
+									{historySales.map((order) => (
+										<div key={order._id} className="border rounded-md p-3">
 											<div className="flex justify-between">
-												<div>#{o.orderNumber}</div>
-												<div className="font-medium">৳{o.totalAmount}</div>
+												<div>#{order.orderNumber}</div>
+												<div className="font-medium">
+													৳{showReadAbleCurrency(order.totalAmount)}
+												</div>
 											</div>
-											<div className="text-muted-foreground">Items: {o.items?.length || 0}</div>
+											<div className="text-muted-foreground">
+												Items: {order.items?.length || 0}
+											</div>
 										</div>
 									))}
 								</div>
@@ -702,13 +720,17 @@ export default function PosDashboardPage() {
 								<CardTitle className="mb-4 text-lg font-bold">Purchases</CardTitle>
 								<div className="space-y-2 text-sm">
 									{historyPurchases.length === 0 && <div>No purchases yet.</div>}
-									{historyPurchases.map((p) => (
-										<div key={p._id} className="border rounded-md p-3">
+									{historyPurchases.map((purchase) => (
+										<div key={purchase._id} className="border rounded-md p-3">
 											<div className="flex justify-between">
-												<div>#{p.purchaseNumber}</div>
-												<div className="font-medium">৳{p.totalAmount}</div>
+												<div>#{purchase.purchaseNumber}</div>
+												<div className="font-medium">
+													৳{showReadAbleCurrency(purchase.totalAmount)}
+												</div>
 											</div>
-											<div className="text-muted-foreground">Items: {p.items?.length || 0}</div>
+											<div className="text-muted-foreground">
+												Items: {purchase.items?.length || 0}
+											</div>
 										</div>
 									))}
 								</div>

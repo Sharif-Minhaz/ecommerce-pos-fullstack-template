@@ -7,6 +7,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { CloudinaryService } from "@/lib/cloudinary";
 import { revalidatePath } from "next/cache";
+import { convertToPlaintObject } from "@/lib/utils";
 
 // =============== get brands for home (all active) ================
 export async function getHomeBrands(limit?: number) {
@@ -17,7 +18,7 @@ export async function getHomeBrands(limit?: number) {
 			query = query.limit(limit);
 		}
 		const brands = await query;
-		return { success: true, brands };
+		return { success: true, brands: convertToPlaintObject(brands) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };
@@ -31,7 +32,7 @@ export async function getBrands() {
 	try {
 		await connectToDatabase();
 		const brands = await Brand.find({ isActive: true }).select("name nameBN slug");
-		return { success: true, brands };
+		return { success: true, brands: convertToPlaintObject(brands) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };
@@ -87,7 +88,7 @@ export async function createBrandQuick(formData: FormData) {
 
 		revalidatePath("/");
 
-		return { success: true, brand };
+		return { success: true, brand: convertToPlaintObject(brand) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };
@@ -116,7 +117,7 @@ export async function getVendorBrands() {
 			.populate("createdBy", "name email")
 			.sort({ createdAt: -1 });
 
-		return { success: true, brands };
+		return { success: true, brands: convertToPlaintObject(brands) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };
@@ -169,7 +170,7 @@ export async function createBrand(formData: FormData) {
 
 		revalidatePath("/my-shop");
 		revalidatePath("/my-shop/brands");
-		return { success: true, brand };
+		return { success: true, brand: convertToPlaintObject(brand) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };
@@ -242,7 +243,7 @@ export async function updateBrand(brandId: string, formData: FormData) {
 
 		revalidatePath("/my-shop");
 		revalidatePath("/my-shop/brands");
-		return { success: true, brand };
+		return { success: true, brand: convertToPlaintObject(brand) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };
@@ -326,7 +327,7 @@ export async function getBrandById(brandId: string) {
 			throw new Error("Access denied. You can only view your own brands.");
 		}
 
-		return { success: true, brand };
+		return { success: true, brand: convertToPlaintObject(brand) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };

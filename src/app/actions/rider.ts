@@ -8,6 +8,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { revalidatePath } from "next/cache";
 import { Types } from "mongoose";
+import { convertToPlaintObject } from "@/lib/utils";
 
 export type CreateRiderInput = {
 	vehicleInfo: {
@@ -100,7 +101,7 @@ export async function getRiderProfile() {
 
 		if (!rider) throw new Error("Rider profile not found");
 
-		return { success: true, rider: JSON.parse(JSON.stringify(rider)) };
+		return { success: true, rider: convertToPlaintObject(rider) };
 	} catch (error: unknown) {
 		if (error instanceof Error) return { success: false, error: error.message };
 		return { success: false, error: "An unknown error occurred" };
@@ -216,7 +217,7 @@ export async function getAvailableRiders(city?: string) {
 			.select("vehicleInfo status rating totalDeliveries successfulDeliveries serviceAreas")
 			.sort({ rating: -1, successfulDeliveries: -1 });
 
-		return { success: true, riders: JSON.parse(JSON.stringify(riders)) };
+		return { success: true, riders: convertToPlaintObject(riders) };
 	} catch (error: unknown) {
 		if (error instanceof Error) return { success: false, error: error.message };
 		return { success: false, error: "An unknown error occurred" };
@@ -316,7 +317,7 @@ export async function getRiderAssignedOrders() {
 			})
 			.sort({ riderAssignmentDate: -1 });
 
-		return { success: true, orders: JSON.parse(JSON.stringify(orders)) };
+		return { success: true, orders: convertToPlaintObject(orders) };
 	} catch (error: unknown) {
 		if (error instanceof Error) return { success: false, error: error.message };
 		return { success: false, error: "An unknown error occurred" };
@@ -494,7 +495,7 @@ export async function getRiderDeliveryHistory() {
 			})
 			.sort({ riderAssignmentDate: -1 });
 
-		return { success: true, orders: JSON.parse(JSON.stringify(orders)) };
+		return { success: true, orders: convertToPlaintObject(orders) };
 	} catch (error: unknown) {
 		if (error instanceof Error) return { success: false, error: error.message };
 		return { success: false, error: "An unknown error occurred" };

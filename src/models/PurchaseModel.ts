@@ -281,17 +281,13 @@ purchaseSchema.index({ isActive: 1 });
 
 // =============== virtual for calculating total items ================
 purchaseSchema.virtual("totalItems").get(function (this: IPurchase) {
-	return this.items.reduce(
-		(total: number, item: { quantity: number }) => total + item.quantity,
-		0
-	);
+	return this.items.reduce((total: number, item: { quantity: number }) => total + item.quantity, 0);
 });
 
 // =============== virtual for calculating received items ================
 purchaseSchema.virtual("totalReceivedItems").get(function (this: IPurchase) {
 	return this.items.reduce(
-		(total: number, item: { receivedQuantity?: number }) =>
-			total + (item.receivedQuantity || 0),
+		(total: number, item: { receivedQuantity?: number }) => total + (item.receivedQuantity || 0),
 		0
 	);
 });
@@ -321,12 +317,8 @@ purchaseSchema.pre("save", function (this: IPurchase, next) {
 
 // =============== method to calculate totals ================
 purchaseSchema.methods.calculateTotals = function (this: IPurchase) {
-	const subtotal = this.items.reduce(
-		(total: number, item: { totalPrice: number }) => total + item.totalPrice,
-		0
-	);
-	const discountAmount =
-		this.discountType === "percentage" ? (subtotal * this.discount) / 100 : this.discount;
+	const subtotal = this.items.reduce((total: number, item: { totalPrice: number }) => total + item.totalPrice, 0);
+	const discountAmount = this.discountType === "percentage" ? (subtotal * this.discount) / 100 : this.discount;
 	const finalSubtotal = subtotal - discountAmount;
 	const vatAmount = (finalSubtotal * this.vat) / 100;
 	const totalAmount = finalSubtotal + vatAmount + this.deliveryCharge;
@@ -373,21 +365,15 @@ purchaseSchema.methods.receiveItems = function (
 	receivedItems: Array<{ productId: string; receivedQuantity: number; damagedQuantity?: number }>
 ) {
 	receivedItems.forEach(({ productId, receivedQuantity, damagedQuantity = 0 }) => {
-		const itemIndex = this.items.findIndex(
-			(item: any) => item.product.toString() === productId
-		);
+		const itemIndex = this.items.findIndex((item: any) => item.product.toString() === productId);
 		if (itemIndex !== -1) {
-			this.items[itemIndex].receivedQuantity =
-				(this.items[itemIndex].receivedQuantity || 0) + receivedQuantity;
-			this.items[itemIndex].damagedQuantity =
-				(this.items[itemIndex].damagedQuantity || 0) + damagedQuantity;
+			this.items[itemIndex].receivedQuantity = (this.items[itemIndex].receivedQuantity || 0) + receivedQuantity;
+			this.items[itemIndex].damagedQuantity = (this.items[itemIndex].damagedQuantity || 0) + damagedQuantity;
 		}
 	});
 
 	// Check if all items are received
-	const allReceived = this.items.every(
-		(item: any) => (item.receivedQuantity || 0) >= item.quantity
-	);
+	const allReceived = this.items.every((item: any) => (item.receivedQuantity || 0) >= item.quantity);
 
 	if (allReceived) {
 		this.purchaseStatus = "received";
@@ -411,5 +397,4 @@ purchaseSchema.methods.calculateProfitMargin = function (this: IPurchase, sellin
 	};
 };
 
-export const Purchase =
-	mongoose.models.Purchase || mongoose.model<IPurchase>("Purchase", purchaseSchema);
+export const Purchase = mongoose.models.Purchase || mongoose.model<IPurchase>("Purchase", purchaseSchema);

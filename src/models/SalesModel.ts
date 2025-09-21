@@ -27,7 +27,7 @@ const orderItemSchema = new Schema({
 const deliveryDetailsSchema = new Schema({
 	name: {
 		type: String,
-		required: [true, "Delivery name is required"],
+		// =============== optional for POS sales ================
 		trim: true,
 		minlength: [2, "Name must be at least 2 characters long"],
 		maxlength: [100, "Name cannot exceed 100 characters"],
@@ -183,11 +183,11 @@ const salesSchema = new Schema<ISales>(
 		},
 		paymentMethod: {
 			type: String,
-			required: [true, "Payment method is required"],
 			enum: {
-				values: ["cod", "stripe", "sslcommerz"],
+				values: ["cod", "stripe", "sslcommerz", "cash"],
 				message: "{VALUE} is not a valid payment method",
 			},
+			default: "cash",
 		},
 		status: {
 			type: String,
@@ -204,6 +204,7 @@ const salesSchema = new Schema<ISales>(
 		},
 		deliveryDetails: {
 			type: deliveryDetailsSchema,
+			// =============== optional for POS sales ================
 		},
 		location: {
 			type: locationSchema,

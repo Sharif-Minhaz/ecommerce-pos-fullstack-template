@@ -7,6 +7,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { CloudinaryService } from "@/lib/cloudinary";
 import { revalidatePath } from "next/cache";
+import { convertToPlaintObject } from "@/lib/utils";
 
 // =============== get categories for home (limited) ================
 export async function getHomeCategories(limit: number = 8) {
@@ -16,7 +17,7 @@ export async function getHomeCategories(limit: number = 8) {
 			.select("name nameBN slug image")
 			.sort({ createdAt: -1 })
 			.limit(limit);
-		return { success: true, categories };
+		return { success: true, categories: convertToPlaintObject(categories) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };
@@ -30,7 +31,7 @@ export async function getCategories() {
 	try {
 		await connectToDatabase();
 		const categories = await Category.find({ isActive: true }).select("name nameBN slug");
-		return { success: true, categories };
+		return { success: true, categories: convertToPlaintObject(categories) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };
@@ -88,7 +89,7 @@ export async function createCategoryQuick(formData: FormData) {
 
 		revalidatePath("/");
 
-		return { success: true, category };
+		return { success: true, category: convertToPlaintObject(category) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };
@@ -118,7 +119,7 @@ export async function getVendorCategories() {
 			.populate("createdBy", "name email")
 			.sort({ createdAt: -1 });
 
-		return { success: true, categories };
+		return { success: true, categories: convertToPlaintObject(categories) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };
@@ -191,7 +192,7 @@ export async function createCategory(formData: FormData) {
 
 		revalidatePath("/my-shop");
 		revalidatePath("/my-shop/categories");
-		return { success: true, category };
+		return { success: true, category: convertToPlaintObject(category) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };
@@ -299,7 +300,7 @@ export async function updateCategory(categoryId: string, formData: FormData) {
 
 		revalidatePath("/my-shop");
 		revalidatePath("/my-shop/categories");
-		return { success: true, category };
+		return { success: true, category: convertToPlaintObject(category) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };
@@ -399,7 +400,7 @@ export async function getCategoryById(categoryId: string) {
 			throw new Error("Access denied. You can only view your own categories.");
 		}
 
-		return { success: true, category };
+		return { success: true, category: convertToPlaintObject(category) };
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			return { success: false, error: error.message };

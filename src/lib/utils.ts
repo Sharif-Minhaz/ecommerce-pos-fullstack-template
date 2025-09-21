@@ -13,3 +13,12 @@ export function convertToPlaintObject(doc: any) {
 		return doc;
 	}
 }
+
+export function showReadAbleCurrency(amount: number) {
+	const formatted = amount.toLocaleString("en-IN", {
+		minimumFractionDigits: 2,
+		maximumFractionDigits: 2,
+	});
+
+	return formatted;
+}
