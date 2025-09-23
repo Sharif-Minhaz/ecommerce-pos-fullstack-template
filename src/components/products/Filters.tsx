@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useRouter, useSearchParams } from "next/navigation";
 
 interface FiltersProps {
@@ -123,21 +125,18 @@ export default function Filters({
 			{/* =============== search filter =============== */}
 			<div>
 				<label className="block mb-1 text-sm font-medium">Search</label>
-				<input
-					type="text"
+				<Input
 					value={formValues.search}
 					onChange={(e) => handleInputChange("search", e.target.value)}
-					className="w-full border px-2 py-1 rounded"
 					placeholder="Search products..."
 				/>
 			</div>
 			{/* =============== stock filter =============== */}
 			<div>
 				<label className="flex items-center gap-2">
-					<input
-						type="checkbox"
+					<Checkbox
 						checked={formValues.inStock}
-						onChange={(e) => handleInputChange("inStock", e.target.checked)}
+						onCheckedChange={(checked) => handleInputChange("inStock", Boolean(checked))}
 					/>
 					In Stock Only
 				</label>
@@ -146,22 +145,22 @@ export default function Filters({
 			<div>
 				<label className="block mb-1 text-sm font-medium">Price Range</label>
 				<div className="flex items-center gap-2">
-					<input
+					<Input
 						type="number"
 						min={minPrice}
 						max={formValues.priceMax}
 						value={formValues.priceMin}
 						onChange={(e) => handleInputChange("priceMin", parseInt(e.target.value) || minPrice)}
-						className="w-20 border px-1 py-1 rounded"
+						className="w-20"
 					/>
 					<span>-</span>
-					<input
+					<Input
 						type="number"
 						min={formValues.priceMin}
 						max={maxPrice}
 						value={formValues.priceMax}
 						onChange={(e) => handleInputChange("priceMax", parseInt(e.target.value) || maxPrice)}
-						className="w-20 border px-1 py-1 rounded"
+						className="w-20"
 					/>
 				</div>
 			</div>
@@ -171,11 +170,11 @@ export default function Filters({
 				<div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
 					{categories.map((cat) => (
 						<label key={cat.slug} className="flex items-center gap-2">
-							<input
-								type="checkbox"
-								value={cat.slug}
+							<Checkbox
 								checked={formValues.categories.includes(cat.slug)}
-								onChange={(e) => handleArrayChange("categories", cat.slug, e.target.checked)}
+								onCheckedChange={(checked) =>
+									handleArrayChange("categories", cat.slug, Boolean(checked))
+								}
 							/>
 							{cat.name}
 						</label>
@@ -188,11 +187,9 @@ export default function Filters({
 				<div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
 					{brands.map((brand) => (
 						<label key={brand.slug} className="flex items-center gap-2">
-							<input
-								type="checkbox"
-								value={brand.slug}
+							<Checkbox
 								checked={formValues.brands.includes(brand.slug)}
-								onChange={(e) => handleArrayChange("brands", brand.slug, e.target.checked)}
+								onCheckedChange={(checked) => handleArrayChange("brands", brand.slug, Boolean(checked))}
 							/>
 							{brand.name}
 						</label>

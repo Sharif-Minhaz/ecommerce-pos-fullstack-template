@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Loader2, Plus, X, Image as ImageIcon, Trash2, Pencil } from "lucide-react";
 import Image from "next/image";
@@ -708,22 +709,18 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<div className="flex items-center space-x-2">
-						<input
-							type="checkbox"
+						<Checkbox
 							id="isActive"
 							checked={formData.isActive}
-							onChange={(e) => handleInputChange("isActive", e.target.checked)}
-							className="rounded"
+							onCheckedChange={(checked) => handleInputChange("isActive", Boolean(checked))}
 						/>
 						<Label htmlFor="isActive">Active (visible to customers)</Label>
 					</div>
 					<div className="flex items-center space-x-2">
-						<input
-							type="checkbox"
+						<Checkbox
 							id="isFeatured"
 							checked={formData.isFeatured}
-							onChange={(e) => handleInputChange("isFeatured", e.target.checked)}
-							className="rounded"
+							onCheckedChange={(checked) => handleInputChange("isFeatured", Boolean(checked))}
 						/>
 						<Label htmlFor="isFeatured">Featured (highlighted on homepage)</Label>
 					</div>

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 export default function RegisterRiderPage() {
@@ -556,11 +557,11 @@ export default function RegisterRiderPage() {
 									{["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map(
 										(day) => (
 											<label key={day} className="flex items-center space-x-2">
-												<input
-													type="checkbox"
+												<Checkbox
 													checked={formData.workingDays.includes(day)}
-													onChange={(e) => handleWorkingDaysChange(day, e.target.checked)}
-													className="rounded"
+													onCheckedChange={(checked) =>
+														handleWorkingDaysChange(day, Boolean(checked))
+													}
 												/>
 												<span className="text-sm capitalize">{day}</span>
 											</label>

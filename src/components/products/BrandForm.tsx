@@ -159,7 +159,7 @@ export function BrandForm({ initialData, isEdit = false }: BrandFormProps) {
 							<Upload className="w-4 h-4" />
 							{imagePreview ? "Change Image" : "Upload Image"}
 						</Button>
-						<input
+						<Input
 							ref={fileInputRef}
 							id="image"
 							name="image"

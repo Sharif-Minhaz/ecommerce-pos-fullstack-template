@@ -164,7 +164,7 @@ export function CategoryForm({ initialData, isEdit = false }: CategoryFormProps)
 							<Upload className="w-4 h-4" />
 							{imagePreview ? "Change Image" : "Upload Image"}
 						</Button>
-						<input
+						<Input
 							ref={fileInputRef}
 							id="image"
 							name="image"

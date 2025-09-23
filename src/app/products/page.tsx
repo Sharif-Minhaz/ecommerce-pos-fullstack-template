@@ -4,6 +4,8 @@ import { getPublicProducts } from "@/app/actions/product";
 import { getCategories } from "@/app/actions/category";
 import { getBrands } from "@/app/actions/brand";
 import { IProduct } from "@/types/product";
+import { ICategory } from "@/types/category";
+import { IBrand } from "@/types/brand";
 
 // =============== fetch real products ===============
 async function getProducts(): Promise<IProduct[]> {
@@ -37,58 +39,58 @@ export default async function ProductsPage({
 }: {
 	searchParams: { [key: string]: string | string[] | undefined };
 }) {
+	const { search, inStock, priceMin, priceMax, category, brand } = await searchParams;
 	const [products, categoriesRes, brandsRes] = await Promise.all([getProducts(), getCategories(), getBrands()]);
 
 	// =============== load categories and brands from db ===============
 	const categories = (
 		categoriesRes && categoriesRes.success && categoriesRes.categories ? categoriesRes.categories : []
 	)
-		.map((c: { name?: string; slug?: string }) => ({ name: c?.name || "", slug: c?.slug || "" }))
-		.filter((c) => c.name && c.slug);
+		.map((category: { name?: string; slug?: string }) => ({
+			name: category?.name || "",
+			slug: category?.slug || "",
+		}))
+		.filter((category: ICategory) => category.name && category.slug);
+
 	const brands = (brandsRes && brandsRes.success && brandsRes.brands ? brandsRes.brands : [])
-		.map((b: { name?: string; slug?: string }) => ({ name: b?.name || "", slug: b?.slug || "" }))
-		.filter((b) => b.name && b.slug);
-	const minPrice = Math.min(...products.map((p) => p.salePrice ?? p.price));
-	const maxPrice = Math.max(...products.map((p) => p.salePrice ?? p.price));
+		.map((brand: { name?: string; slug?: string }) => ({ name: brand?.name || "", slug: brand?.slug || "" }))
+		.filter((brand: IBrand) => brand.name && brand.slug);
+
+	const minPrice = Math.min(...products.map((price) => price.salePrice ?? price.price));
+	const maxPrice = Math.max(...products.map((price) => price.salePrice ?? price.price));
 
 	// =============== get filter values from searchParams ===============
-	const search = typeof searchParams.search === "string" ? searchParams.search : "";
-	const inStock = searchParams.inStock === "on";
-	const priceMin = searchParams.priceMin ? Number(searchParams.priceMin) : minPrice;
-	const priceMax = searchParams.priceMax ? Number(searchParams.priceMax) : maxPrice;
-	const selectedCategories = Array.isArray(searchParams.category)
-		? searchParams.category
-		: searchParams.category
-		? [searchParams.category]
-		: [];
-	const selectedBrands = Array.isArray(searchParams.brand)
-		? searchParams.brand
-		: searchParams.brand
-		? [searchParams.brand]
-		: [];
+	const searchKey = typeof search === "string" ? search : "";
+	const inStockKey = inStock === "on";
+	const priceMinKey = priceMin ? Number(priceMin) : minPrice;
+	const priceMaxKey = priceMax ? Number(priceMax) : maxPrice;
+	const selectedCategories = Array.isArray(category) ? category : category ? [category] : [];
+	const selectedBrands = Array.isArray(brand) ? brand : brand ? [brand] : [];
 
 	// =============== filter products on the server ===============
-	const filteredProducts = products.filter((p) => {
-		const title = p.title?.toLowerCase() || "";
-		const brand = getBrandName(p).toLowerCase();
-		const category = getCategoryName(p).toLowerCase();
-		const brandSlug = getBrandSlug(p);
-		const categorySlug = getCategorySlug(p);
-		const price = p.salePrice ?? p.price;
+	const filteredProducts = products.filter((product) => {
+		const title = product.title?.toLowerCase() || "";
+		const brand = getBrandName(product).toLowerCase();
+		const category = getCategoryName(product).toLowerCase();
+		const brandSlug = getBrandSlug(product);
+		const categorySlug = getCategorySlug(product);
+		const price = product.salePrice ?? product.price;
 
 		if (
-			search &&
+			searchKey &&
 			!(
-				title.includes(search.toLowerCase()) ||
-				brand.includes(search.toLowerCase()) ||
-				category.includes(search.toLowerCase())
+				title.includes(searchKey.toLowerCase()) ||
+				brand.includes(searchKey.toLowerCase()) ||
+				category.includes(searchKey.toLowerCase())
 			)
 		)
 			return false;
-		if (inStock && p.stock <= 0) return false;
-		if (price < priceMin || price > priceMax) return false;
+
+		if (inStockKey && product.stock <= 0) return false;
+		if (price < priceMinKey || price > priceMaxKey) return false;
 		if (selectedCategories.length && !selectedCategories.includes(categorySlug)) return false;
 		if (selectedBrands.length && !selectedBrands.includes(brandSlug)) return false;
+
 		return true;
 	});
 
@@ -98,9 +100,9 @@ export default async function ProductsPage({
 			<div className="w-full md:w-72 md:shrink-0 mb-4 md:mb-0">
 				<div className="md:sticky md:top-20">
 					<Filters
-						search={search}
-						inStock={inStock}
-						priceRange={[priceMin, priceMax]}
+						search={searchKey}
+						inStock={inStockKey}
+						priceRange={[priceMinKey, priceMaxKey]}
 						minPrice={minPrice}
 						maxPrice={maxPrice}
 						categories={categories}
