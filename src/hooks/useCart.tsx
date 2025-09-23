@@ -60,9 +60,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 			const existing = prev.find((item) => item.product._id === product._id);
 			if (existing) {
 				return prev.map((item) =>
-					item.product._id === product._id
-						? { ...item, quantity: item.quantity + quantity }
-						: item
+					item.product._id === product._id ? { ...item, quantity: item.quantity + quantity } : item
 				);
 			}
 			return [...prev, { product, quantity }];
@@ -71,9 +69,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 	// =============== update product quantity ================
 	const updateQuantity = (productId: string, quantity: number) => {
-		setCart((prev) =>
-			prev.map((item) => (item.product._id === productId ? { ...item, quantity } : item))
-		);
+		setCart((prev) => prev.map((item) => (item.product._id === productId ? { ...item, quantity } : item)));
 	};
 
 	// =============== remove product from cart ================

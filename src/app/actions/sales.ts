@@ -8,6 +8,8 @@ import { revalidatePath } from "next/cache";
 import { Types } from "mongoose";
 import { Product } from "@/models/ProductModel";
 import { convertToPlaintObject } from "@/lib/utils";
+import { notificationFactory } from "@/lib/notification-factory";
+import { orderEmailIntegration } from "@/lib/email-integration";
 
 type CreateOrderItem = {
 	productId: string;
@@ -81,6 +83,31 @@ export async function createSalesOrder(input: CreateOrderInput) {
 			due: totalAmount,
 			taxAmount,
 		});
+
+		// =============== notify and email customer and vendors ================
+		try {
+			// customer notification + email
+			await notificationFactory.orderPlaced(String(session.user.id), sales.orderNumber);
+			const customerEmail = input.deliveryDetails.email || session.user.email || "";
+			const customerName = input.deliveryDetails.name || session.user.name || "Customer";
+			await orderEmailIntegration.sendOrderPlacedEmail(
+				customerEmail,
+				customerName,
+				sales.orderNumber,
+				totalAmount
+			);
+
+			// notify involved vendors about new order
+			const productIds = input.items.map((i) => i.productId);
+			const products = await Product.find({ _id: { $in: productIds } }).select("vendor title");
+			const uniqueVendors = Array.from(new Set(products.map((p) => String(p.vendor))));
+			for (const vendorId of uniqueVendors) {
+				await notificationFactory.newOrder(vendorId, sales.orderNumber, customerName, totalAmount);
+			}
+		} catch (err) {
+			// =============== swallow notification/email errors to not block order creation ================
+			console.error("Post-order notifications/emails failed:", err);
+		}
 
 		revalidatePath("/my-orders");
 
@@ -320,6 +347,45 @@ export async function updateOrderStatus(formData: FormData) {
 		await order.save();
 
 		revalidatePath("/my-shop/manage-orders");
+
+		// =============== send notifications/emails based on status ================
+		try {
+			const customerId = String(order.user);
+			const customerEmail = order.deliveryDetails?.email || "";
+			const customerName = order.deliveryDetails?.name || "Customer";
+			const orderId = order.orderNumber as unknown as string;
+
+			switch (status) {
+				case "approved":
+				case "processing": {
+					await notificationFactory.orderAccepted(customerId, orderId, "Vendor");
+					await orderEmailIntegration.sendOrderAcceptedEmail(customerEmail, customerName, orderId, "Vendor");
+					break;
+				}
+				case "shipped": {
+					await notificationFactory.orderShipped(customerId, orderId);
+					await orderEmailIntegration.sendOrderShippedEmail(customerEmail, customerName, orderId);
+					break;
+				}
+				case "delivered": {
+					await notificationFactory.orderDelivered(customerId, orderId);
+					await orderEmailIntegration.sendOrderDeliveredEmail(customerEmail, customerName, orderId);
+					break;
+				}
+				case "cancelled": {
+					await notificationFactory.orderCancelled(customerId, orderId);
+					// optional email integration if available in system
+					if (orderEmailIntegration.sendOrderCancelledEmail) {
+						await orderEmailIntegration.sendOrderCancelledEmail(customerEmail, customerName, orderId);
+					}
+					break;
+				}
+				default:
+					break;
+			}
+		} catch (err) {
+			console.error("Order status notification/email failed:", err);
+		}
 	} catch (error: unknown) {
 		console.error("Failed to update order status:", error);
 	}

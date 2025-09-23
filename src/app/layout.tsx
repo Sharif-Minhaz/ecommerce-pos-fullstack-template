@@ -9,6 +9,7 @@ import { LanguageProvider } from "@/components/providers/language-provider";
 import { Footer } from "@/components/shared/footer";
 import { CartContextProvider } from "@/components/providers/cart-provider";
 import FloatingActionButton from "@/components/shared/FloatingActionButton";
+import ShortcutFloatingButton from "@/components/shared/ShortcutFloatingButton";
 
 const inter = Inter({
 	subsets: ["latin"],
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 									<Footer />
 								</div>
 								<FloatingActionButton />
+								<ShortcutFloatingButton />
 								<Toaster />
 							</CartContextProvider>
 						</LanguageProvider>

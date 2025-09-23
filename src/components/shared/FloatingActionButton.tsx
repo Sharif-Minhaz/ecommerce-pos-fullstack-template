@@ -31,7 +31,7 @@ export default function FloatingActionButton() {
 	}
 
 	return (
-		<div className="fixed bottom-1 right-1 md:bottom-6 md:right-6 z-50" ref={menuRef}>
+		<div className="fixed bottom-1 right-1 md:bottom-22 md:right-6 z-50" ref={menuRef}>
 			{/* =============== expanded menu =============== */}
 			<div
 				className={`mb-18 flex flex-col gap-2 transition-all duration-300 ease-in-out ${

@@ -7,6 +7,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { revalidatePath } from "next/cache";
 import { convertToPlaintObject } from "@/lib/utils";
+import { notificationFactory } from "@/lib/notification-factory";
+import { vendorEmailIntegration } from "@/lib/email-integration";
 
 // =============== list reviews for a product (public) ================
 export async function listProductReviews(productId: string) {
@@ -45,6 +47,21 @@ export async function upsertReview(productId: string, formData: FormData) {
 		);
 
 		revalidatePath(`/products/${product.slug}`);
+
+		// =============== notify vendor about new/updated review ================
+		try {
+			const vendorId = String(product.vendor);
+			await notificationFactory.productReview(vendorId, product.title, rating, session.user.name || "Customer");
+			// optional email
+			const vendorUser = await (
+				await import("@/models/UserModel")
+			).User.findById(product.vendor).select("email name");
+			if (vendorUser?.email) {
+				await vendorEmailIntegration.sendLowStockEmail?.(vendorUser.email, product.title, rating);
+			}
+		} catch (err) {
+			console.error("Vendor review notification/email failed:", err);
+		}
 		return { success: true, review: convertToPlaintObject(review) };
 	} catch (error: unknown) {
 		if (error instanceof Error) return { success: false, error: error.message };

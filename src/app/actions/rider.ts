@@ -9,6 +9,8 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { revalidatePath } from "next/cache";
 import { Types } from "mongoose";
 import { convertToPlaintObject } from "@/lib/utils";
+import { notificationFactory } from "@/lib/notification-factory";
+import { riderEmailIntegration, orderEmailIntegration } from "@/lib/email-integration";
 
 export type CreateRiderInput = {
 	vehicleInfo: {
@@ -289,6 +291,34 @@ export async function assignRiderToOrder(orderId: string, riderId: string) {
 		revalidatePath("/my-shop/manage-orders");
 		revalidatePath("/rider/dashboard");
 
+		// =============== notify rider and customer ================
+		try {
+			const orderIdStr = order.orderNumber as unknown as string;
+			const customerId = String(order.user);
+			const customerName = order.deliveryDetails?.name || "Customer";
+			const riderUserId = String(rider.user);
+
+			await notificationFactory.riderAssigned(customerId, orderIdStr, rider.user?.name || "Rider");
+			await notificationFactory.newDeliveryRequest(
+				[riderUserId],
+				orderIdStr,
+				customerName,
+				order.deliveryDetails?.address || ""
+			);
+
+			const riderEmail = (await User.findById(rider.user).select("email name")).email || "";
+			await riderEmailIntegration.sendNewDeliveryRequestEmail(
+				riderEmail,
+				orderIdStr,
+				(await User.findById(rider.user).select("name")).name || "Rider",
+				customerName,
+				order.deliveryDetails?.address || "",
+				order.totalAmount || 0
+			);
+		} catch (err) {
+			console.error("Rider assignment notifications/emails failed:", err);
+		}
+
 		return { success: true };
 	} catch (error: unknown) {
 		if (error instanceof Error) return { success: false, error: error.message };
@@ -359,6 +389,18 @@ export async function acceptOrderDelivery(orderId: string) {
 		revalidatePath("/rider/dashboard");
 		revalidatePath("/my-shop/manage-orders");
 
+		// =============== notify customer ================
+		try {
+			const orderIdStr = order.orderNumber as unknown as string;
+			const customerId = String(order.user);
+			const customerEmailAddr = order.deliveryDetails?.email || "";
+			const customerName = order.deliveryDetails?.name || "Customer";
+			await notificationFactory.riderOnTheWay(customerId, orderIdStr, "Rider");
+			await riderEmailIntegration.sendRiderOnTheWayEmail(customerEmailAddr, customerName, orderIdStr, "Rider");
+		} catch (err) {
+			console.error("Rider accept notify/email failed:", err);
+		}
+
 		return { success: true };
 	} catch (error: unknown) {
 		if (error instanceof Error) return { success: false, error: error.message };
@@ -403,6 +445,19 @@ export async function rejectOrderDelivery(orderId: string, reason: string) {
 
 		revalidatePath("/rider/dashboard");
 		revalidatePath("/my-shop/manage-orders");
+
+		// =============== notify vendor/customer optional ================
+		try {
+			const orderIdStr = order.orderNumber as unknown as string;
+			const customerId = String(order.user);
+			await notificationFactory.deliveryRejected(
+				customerId,
+				orderIdStr,
+				order.deliveryDetails?.name || "Customer"
+			);
+		} catch (err) {
+			console.error("Rider rejection notify failed:", err);
+		}
 
 		return { success: true };
 	} catch (error: unknown) {
@@ -466,6 +521,24 @@ export async function updateDeliveryStatus(
 
 		revalidatePath("/rider/dashboard");
 		revalidatePath("/my-shop/manage-orders");
+
+		// =============== notify customer for updates ================
+		try {
+			const orderIdStr = order.orderNumber as unknown as string;
+			const customerId = String(order.user);
+			const customerEmail = order.deliveryDetails?.email || "";
+			const customerName = order.deliveryDetails?.name || "Customer";
+			if (status === "picked_up") {
+				await notificationFactory.deliveryUpdate(customerId, orderIdStr, "picked up");
+			} else if (status === "delivered") {
+				await notificationFactory.orderDelivered(customerId, orderIdStr);
+				await orderEmailIntegration.sendOrderDeliveredEmail(customerEmail, customerName, orderIdStr);
+			} else if (status === "failed") {
+				await notificationFactory.deliveryUpdate(customerId, orderIdStr, "delivery failed");
+			}
+		} catch (err) {
+			console.error("Delivery status notify/email failed:", err);
+		}
 
 		return { success: true };
 	} catch (error: unknown) {
