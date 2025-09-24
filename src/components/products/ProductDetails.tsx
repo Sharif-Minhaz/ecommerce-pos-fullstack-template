@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { Heart, Star, Trash2, Loader2, Edit3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,7 +9,10 @@ import { IProduct } from "@/types/product";
 import ProductReview from "./ProductReview";
 import { useCart } from "@/hooks/useCart";
 import { listProductReviews, upsertReview, deleteOwnReview } from "@/app/actions/review";
+import { addToWishlist, removeFromWishlist, getWishlistIds } from "@/app/actions/wishlist";
+import { toast } from "sonner";
 import { useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
 
 // local view type for reviews
 type ReviewView = { _id: string; user?: { _id?: string; name?: string }; rating: number; review: string };
@@ -27,15 +29,17 @@ export default function ProductDetails({ product }: { product: IProduct }) {
 	const { addToCart } = useCart();
 	const { data: session } = useSession();
 	// =============== state for quantity ================
-	const [quantity, setQuantity] = React.useState(1);
+	const [quantity, setQuantity] = useState(1);
 	// =============== state for selected main image ================
-	const [selectedImage, setSelectedImage] = React.useState(product.gallery[0]);
+	const [selectedImage, setSelectedImage] = useState(product.gallery[0]);
 	// =============== reviews state ================
-	const [reviews, setReviews] = React.useState<ReviewView[]>([]);
-	const [loadingReviews, setLoadingReviews] = React.useState(true);
-	const [, setSubmitting] = React.useState(false);
-	const [isEditing, setIsEditing] = React.useState(false);
-	const [ownReview, setOwnReview] = React.useState<{ rating: number; review: string } | null>(null);
+	const [reviews, setReviews] = useState<ReviewView[]>([]);
+	const [loadingReviews, setLoadingReviews] = useState(true);
+	const [, setSubmitting] = useState(false);
+	const [isEditing, setIsEditing] = useState(false);
+	const [ownReview, setOwnReview] = useState<{ rating: number; review: string } | null>(null);
+	const [wishlisted, setWishlisted] = useState(false);
+	const [wishlistBusy, setWishlistBusy] = useState(false);
 
 	const avgRating = reviews.length ? reviews.reduce((a, b) => a + b.rating, 0) / reviews.length : 0;
 
@@ -45,7 +49,7 @@ export default function ProductDetails({ product }: { product: IProduct }) {
 	};
 
 	// =============== load reviews ================
-	React.useEffect(() => {
+	useEffect(() => {
 		let mounted = true;
 		(async () => {
 			try {
@@ -58,8 +62,8 @@ export default function ProductDetails({ product }: { product: IProduct }) {
 					setReviews(list);
 					const me = session?.user?.id;
 					if (me) {
-						const mine = list.find((r) => r?.user?._id === me);
-						setOwnReview(mine ? { rating: mine.rating, review: mine.review } : null);
+						const mineReview = list.find((review) => review?.user?._id === me);
+						setOwnReview(mineReview ? { rating: mineReview.rating, review: mineReview.review } : null);
 					} else {
 						setOwnReview(null);
 					}
@@ -73,14 +77,64 @@ export default function ProductDetails({ product }: { product: IProduct }) {
 		};
 	}, [product, session?.user?.id]);
 
+	// =============== load wishlist state ================
+	useEffect(() => {
+		(async () => {
+			try {
+				const res = await getWishlistIds();
+				if (res.success) {
+					const pid = product._id?.toString?.() || (product as unknown as { id?: string }).id;
+					setWishlisted(!!pid && res.ids?.includes?.(pid));
+				} else {
+					setWishlisted(false);
+				}
+			} catch {
+				setWishlisted(false);
+			}
+		})();
+	}, [product]);
+
+	// =============== toggle wishlist ================
+	const onToggleWishlist = async () => {
+		if (!session) {
+			toast.error("Please login to use wishlist");
+			return;
+		}
+		const pid = product._id?.toString?.() || (product as unknown as { id?: string }).id;
+		if (!pid) return;
+		try {
+			setWishlistBusy(true);
+			if (!wishlisted) {
+				const res = await addToWishlist(pid);
+				if (res.success) {
+					setWishlisted(true);
+					toast.success("Added to wishlist");
+				}
+			} else {
+				const res = await removeFromWishlist(pid);
+				if (res.success) {
+					setWishlisted(false);
+					toast.success("Removed from wishlist");
+				}
+			}
+		} finally {
+			setWishlistBusy(false);
+		}
+	};
+
 	// =============== submit review ================
 	const handleSubmitReview = async (data: { rating: number; review: string }) => {
 		try {
 			setSubmitting(true);
-			const fd = new FormData();
-			fd.set("rating", String(data.rating));
-			fd.set("review", data.review);
-			const res = await upsertReview(product._id?.toString?.() || (product as unknown as { id: string }).id, fd);
+			const formData = new FormData();
+			formData.set("rating", String(data.rating));
+			formData.set("review", data.review);
+
+			const res = await upsertReview(
+				product._id?.toString?.() || (product as unknown as { id: string }).id,
+				formData
+			);
+
 			if (res.success) {
 				const list = await listProductReviews(
 					product._id?.toString?.() || (product as unknown as { id: string }).id
@@ -90,7 +144,7 @@ export default function ProductDetails({ product }: { product: IProduct }) {
 					setReviews(newList);
 					const me = session?.user?.id;
 					if (me) {
-						const mine = newList.find((r) => r?.user?._id === me);
+						const mine = newList.find((review) => review?.user?._id === me);
 						setOwnReview(mine ? { rating: mine.rating, review: mine.review } : null);
 					}
 					setIsEditing(false);
@@ -169,17 +223,22 @@ export default function ProductDetails({ product }: { product: IProduct }) {
 							</span>
 						)}
 					</div>
-					<div className="flex items-center gap-1 cursor-pointer">
-						<Heart size={18} />
-						<span className="text-sm text-gray-500">Add to Wishlist</span>
-					</div>
+					<button
+						className="flex items-center gap-1 cursor-pointer disabled:opacity-60"
+						onClick={onToggleWishlist}
+						disabled={wishlistBusy}
+						aria-label={wishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+					>
+						<Heart size={18} className={wishlisted ? "text-red-500 fill-red-500" : ""} />
+						<span className="text-sm text-gray-500">{wishlisted ? "Wishlisted" : "Add to Wishlist"}</span>
+					</button>
 					<div className="flex items-center gap-2">
 						{/* =============== rating stars =============== */}
-						{[1, 2, 3, 4, 5].map((i) => (
+						{[1, 2, 3, 4, 5].map((index) => (
 							<Star
-								key={i}
+								key={index}
 								className={
-									i <= Math.round(avgRating) ? "text-yellow-400 fill-yellow-300" : "text-gray-300"
+									index <= Math.round(avgRating) ? "text-yellow-400 fill-yellow-300" : "text-gray-300"
 								}
 								size={20}
 							/>
@@ -209,7 +268,7 @@ export default function ProductDetails({ product }: { product: IProduct }) {
 						<Button
 							variant="outline"
 							size="icon"
-							onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+							onClick={() => setQuantity((quantity) => Math.max(1, quantity - 1))}
 							disabled={quantity <= 1}
 						>
 							-
@@ -218,7 +277,7 @@ export default function ProductDetails({ product }: { product: IProduct }) {
 						<Button
 							variant="outline"
 							size="icon"
-							onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}
+							onClick={() => setQuantity((quantity) => Math.min(product.stock, quantity + 1))}
 							disabled={quantity >= product.stock}
 						>
 							+
@@ -251,11 +310,13 @@ export default function ProductDetails({ product }: { product: IProduct }) {
 						</div>
 						<div className="border rounded-lg p-4 bg-white shadow-sm">
 							<div className="flex items-center gap-2 mb-1">
-								{[1, 2, 3, 4, 5].map((i) => (
+								{[1, 2, 3, 4, 5].map((index) => (
 									<Star
-										key={i}
+										key={index}
 										className={
-											i <= ownReview.rating ? "text-yellow-400 fill-yellow-300" : "text-gray-300"
+											index <= ownReview.rating
+												? "text-yellow-400 fill-yellow-300"
+												: "text-gray-300"
 										}
 										size={16}
 									/>
@@ -287,20 +348,24 @@ export default function ProductDetails({ product }: { product: IProduct }) {
 							<Loader2 className="w-4 h-4 animate-spin" /> Loading reviews...
 						</div>
 					)}
-					{reviews.map((r) => (
-						<div key={r._id} className="border rounded-lg p-4 bg-white shadow-sm">
+					{reviews.map((review) => (
+						<div key={review._id} className="border rounded-lg p-4 bg-white shadow-sm">
 							<div className="flex items-center gap-2 mb-1">
-								{[1, 2, 3, 4, 5].map((i) => (
+								{[1, 2, 3, 4, 5].map((index) => (
 									<Star
-										key={i}
-										className={i <= r.rating ? "text-yellow-400 fill-yellow-300" : "text-gray-300"}
+										key={index}
+										className={
+											index <= review.rating ? "text-yellow-400 fill-yellow-300" : "text-gray-300"
+										}
 										size={16}
 									/>
 								))}
-								<span className="font-semibold text-gray-700 ml-2">{r.user?.name ?? "Anonymous"}</span>
+								<span className="font-semibold text-gray-700 ml-2">
+									{review.user?.name ?? "Anonymous"}
+								</span>
 							</div>
-							<div className="text-gray-700 text-sm">{r.review}</div>
-							{session?.user?.id && r?.user?._id === session.user.id && (
+							<div className="text-gray-700 text-sm">{review.review}</div>
+							{session?.user?.id && review?.user?._id === session.user.id && (
 								<div className="flex gap-2 mt-2">
 									<Button variant="outline" size="sm" onClick={handleDeleteOwnReview}>
 										<Trash2 className="w-4 h-4" />

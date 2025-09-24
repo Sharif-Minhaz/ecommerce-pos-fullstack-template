@@ -47,7 +47,7 @@ export default function FloatingActionButton() {
 						</div>
 						<div className="text-sm">
 							<div className="font-medium">POS Dashboard</div>
-							<div className="text-muted-foreground">Record sales & purchases</div>
+							{/* <div className="text-muted-foreground">Record sales & purchases</div> */}
 						</div>
 					</div>
 				</Link>
@@ -58,7 +58,7 @@ export default function FloatingActionButton() {
 						</div>
 						<div className="text-sm">
 							<div className="font-medium">Add Product</div>
-							<div className="text-muted-foreground">Create new product</div>
+							{/* <div className="text-muted-foreground">Create new product</div> */}
 						</div>
 					</div>
 				</Link>
@@ -70,7 +70,7 @@ export default function FloatingActionButton() {
 						</div>
 						<div className="text-sm">
 							<div className="font-medium">Manage Products</div>
-							<div className="text-muted-foreground">View all products</div>
+							{/* <div className="text-muted-foreground">View all products</div> */}
 						</div>
 					</div>
 				</Link>
@@ -82,7 +82,7 @@ export default function FloatingActionButton() {
 						</div>
 						<div className="text-sm">
 							<div className="font-medium">Shop Settings</div>
-							<div className="text-muted-foreground">Manage shop info</div>
+							{/* <div className="text-muted-foreground">Manage shop info</div> */}
 						</div>
 					</div>
 				</Link>

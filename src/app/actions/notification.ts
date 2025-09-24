@@ -6,6 +6,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import NotificationModel, { INotification } from "@/models/NotificationModel";
 import { connectToDatabase } from "@/db";
 import { NotificationTemplate, createNotificationFromTemplate } from "@/lib/notification-templates";
+import { convertToPlaintObject } from "@/lib/utils";
 
 // =============== extend notification model with static methods ================
 interface NotificationModelWithStatics {
@@ -52,7 +53,7 @@ export async function getUserNotifications(
 			limit,
 			skip
 		);
-		return { success: true, notifications };
+		return { success: true, notifications: convertToPlaintObject(notifications) };
 	} catch (error) {
 		console.error("Error getting user notifications:", error);
 		return { success: false, error: "Failed to get notifications" };
@@ -118,7 +119,7 @@ export async function createNotification(
 
 		await notification.save();
 		revalidatePath("/");
-		return { success: true, notification };
+		return { success: true, notification: convertToPlaintObject(notification) };
 	} catch (error) {
 		console.error("Error creating notification:", error);
 		return { success: false, error: "Failed to create notification" };
@@ -139,7 +140,7 @@ export async function createNotificationFromTemplateAction(
 
 		await notification.save();
 		revalidatePath("/");
-		return { success: true, notification };
+		return { success: true, notification: convertToPlaintObject(notification) };
 	} catch (error) {
 		console.error("Error creating notification from template:", error);
 		return { success: false, error: "Failed to create notification from template" };

@@ -26,7 +26,7 @@ export default function Product({ product }: { product: IProduct }) {
 	const { addToCart } = useCart();
 
 	return (
-		<Card className="relative h-full flex flex-col justify-between py-3">
+		<Card className="relative h-full flex overflow-hidden flex-col justify-between pb-3 !pt-0">
 			{/* =============== discount badge =============== */}
 			{product.discountRate && (
 				<span className="absolute top-2 right-2 bg-orange-400 text-white text-xs font-bold px-2 py-1 rounded z-10">
@@ -36,13 +36,13 @@ export default function Product({ product }: { product: IProduct }) {
 
 			<CardContent className="flex flex-col items-center p-0">
 				<Link href={`/products/${product.slug}`} className="w-full">
-					<div className="w-[170px] h-[170px] mx-auto relative mb-2 rounded overflow-hidden bg-white flex items-center justify-center">
+					<div className="w-full h-[170px] mx-auto relative mb-2 rounded bg-white flex items-center justify-center">
 						<Image
 							src={product.gallery[0]}
 							alt={product.title}
 							fill
 							sizes="170px"
-							className="object-contain"
+							className="object-cover overflow-hidden"
 						/>
 					</div>
 					<div className="text-sm font-semibold text-slate-500 text-center line-clamp-2 my-1 min-h-[40px] px-2">
@@ -50,8 +50,7 @@ export default function Product({ product }: { product: IProduct }) {
 					</div>
 					<div className="flex items-center justify-center gap-2">
 						<span className="text-lg font-bold text-primary">
-							৳{" "}
-							{product.salePrice?.toLocaleString() ?? product.price.toLocaleString()}
+							৳ {product.salePrice?.toLocaleString() ?? product.price.toLocaleString()}
 						</span>
 						{product.salePrice && (
 							<span className="text-muted-foreground text-sm line-through">
@@ -74,12 +73,7 @@ export default function Product({ product }: { product: IProduct }) {
 			</CardContent>
 
 			<CardFooter className="-mt-2 px-3 pb-0">
-				<Button
-					onClick={() => addToCart(product, 1)}
-					className="w-full"
-					variant="default"
-					size="sm"
-				>
+				<Button onClick={() => addToCart(product, 1)} className="w-full" variant="default" size="sm">
 					Add To Cart <ShoppingBag className="w-4 h-4" />
 				</Button>
 			</CardFooter>

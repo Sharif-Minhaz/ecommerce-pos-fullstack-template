@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Label } from "../ui/label";
+import { Separator } from "../ui/separator";
 
 interface FiltersProps {
 	search: string;
@@ -124,28 +126,31 @@ export default function Filters({
 		<form className="w-full max-w-xs p-4 border rounded bg-white flex flex-col gap-6" onSubmit={handleSubmit}>
 			{/* =============== search filter =============== */}
 			<div>
-				<label className="block mb-1 text-sm font-medium">Search</label>
+				<Label className="mb-1.5" htmlFor="search">
+					Search
+				</Label>
 				<Input
+					id="search"
 					value={formValues.search}
 					onChange={(e) => handleInputChange("search", e.target.value)}
 					placeholder="Search products..."
 				/>
 			</div>
 			{/* =============== stock filter =============== */}
-			<div>
-				<label className="flex items-center gap-2">
-					<Checkbox
-						checked={formValues.inStock}
-						onCheckedChange={(checked) => handleInputChange("inStock", Boolean(checked))}
-					/>
-					In Stock Only
-				</label>
+			<div className="flex items-center gap-2">
+				<Checkbox
+					id="inStock"
+					checked={formValues.inStock}
+					onCheckedChange={(checked) => handleInputChange("inStock", Boolean(checked))}
+				/>
+				<Label htmlFor="inStock">In Stock Only</Label>
 			</div>
 			{/* =============== price range filter =============== */}
 			<div>
-				<label className="block mb-1 text-sm font-medium">Price Range</label>
+				<Label className="mb-1.5">Price Range</Label>
 				<div className="flex items-center gap-2">
 					<Input
+						id="priceMin"
 						type="number"
 						min={minPrice}
 						max={formValues.priceMax}
@@ -155,6 +160,7 @@ export default function Filters({
 					/>
 					<span>-</span>
 					<Input
+						id="priceMax"
 						type="number"
 						min={formValues.priceMin}
 						max={maxPrice}
@@ -164,35 +170,39 @@ export default function Filters({
 					/>
 				</div>
 			</div>
+			<Separator />
 			{/* =============== category filter =============== */}
 			<div>
-				<label className="block mb-1 text-sm font-medium">Categories</label>
-				<div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
+				<Label className="mb-3">Categories</Label>
+				<div className="flex flex-col gap-3 max-h-32 overflow-y-auto">
 					{categories.map((cat) => (
-						<label key={cat.slug} className="flex items-center gap-2">
+						<Label key={cat.slug} className="flex items-center gap-2">
 							<Checkbox
+								id={cat.slug}
 								checked={formValues.categories.includes(cat.slug)}
 								onCheckedChange={(checked) =>
 									handleArrayChange("categories", cat.slug, Boolean(checked))
 								}
 							/>
 							{cat.name}
-						</label>
+						</Label>
 					))}
 				</div>
 			</div>
+			<Separator />
 			{/* =============== brand filter =============== */}
 			<div>
-				<label className="block mb-1 text-sm font-medium">Brands</label>
-				<div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
+				<Label className="mb-3">Brands</Label>
+				<div className="flex flex-col gap-3 max-h-32 overflow-y-auto">
 					{brands.map((brand) => (
-						<label key={brand.slug} className="flex items-center gap-2">
+						<Label key={brand.slug} className="flex items-center gap-2">
 							<Checkbox
+								id={brand.slug}
 								checked={formValues.brands.includes(brand.slug)}
 								onCheckedChange={(checked) => handleArrayChange("brands", brand.slug, Boolean(checked))}
 							/>
 							{brand.name}
-						</label>
+						</Label>
 					))}
 				</div>
 			</div>

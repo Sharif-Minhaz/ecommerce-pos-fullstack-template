@@ -4,6 +4,16 @@ import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2, Plus, Edit3, Trash2, Eye, Package, TrendingUp, DollarSign, X } from "lucide-react";
@@ -22,6 +32,8 @@ export default function VendorProductsPage() {
 	const [showForm, setShowForm] = useState(false);
 	const [editingProduct, setEditingProduct] = useState<IProduct | null>(null);
 	const [deletingProduct, setDeletingProduct] = useState<string | null>(null);
+	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+	const [productIdPendingDelete, setProductIdPendingDelete] = useState<string | null>(null);
 
 	// =============== check authentication and vendor status ================
 	useEffect(() => {
@@ -94,10 +106,6 @@ export default function VendorProductsPage() {
 
 	// =============== handle delete product ================
 	const handleDeleteProduct = async (productId: string) => {
-		if (!confirm("Are you sure you want to delete this product? This action cannot be undone.")) {
-			return;
-		}
-
 		try {
 			setDeletingProduct(productId);
 			const result = await deleteProduct(productId);
@@ -113,6 +121,8 @@ export default function VendorProductsPage() {
 			toast.error("An error occurred while deleting the product");
 		} finally {
 			setDeletingProduct(null);
+			setProductIdPendingDelete(null);
+			setDeleteDialogOpen(false);
 		}
 	};
 
@@ -255,7 +265,7 @@ export default function VendorProductsPage() {
 				) : (
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 						{products.map((product) => (
-							<Card key={product._id} className="relative">
+							<Card key={product._id?.toString() || ""} className="relative pt-0">
 								{/* Status Badges */}
 								<div className="absolute top-3 left-3 z-10 flex gap-2">
 									{!product.isActive && (
@@ -294,11 +304,11 @@ export default function VendorProductsPage() {
 									<div className="space-y-2 mb-4">
 										<div className="flex justify-between text-sm">
 											<span className="text-muted-foreground">Category:</span>
-											<span>{product?.category.name}</span>
+											<span>{product?.category?.name}</span>
 										</div>
 										<div className="flex justify-between text-sm">
 											<span className="text-muted-foreground">Brand:</span>
-											<span>{product?.brand.name}</span>
+											<span>{product?.brand?.name}</span>
 										</div>
 										<div className="flex justify-between text-sm">
 											<span className="text-muted-foreground">SKU:</span>
@@ -351,7 +361,10 @@ export default function VendorProductsPage() {
 										<Button
 											variant="destructive"
 											size="sm"
-											onClick={() => handleDeleteProduct(product._id)}
+											onClick={() => {
+												setProductIdPendingDelete(product._id?.toString() || "");
+												setDeleteDialogOpen(true);
+											}}
 											disabled={deletingProduct === product._id}
 										>
 											{deletingProduct === product._id ? (
@@ -369,6 +382,30 @@ export default function VendorProductsPage() {
 			</div>
 
 			<FloatingActionButton />
+
+			{/* =============== delete confirmation dialog ================ */}
+			<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+				<AlertDialogContent className="top-[16%]">
+					<AlertDialogHeader>
+						<AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+						<AlertDialogDescription>
+							This action cannot be undone. This will permanently delete the product.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={() => {
+								if (productIdPendingDelete) {
+									handleDeleteProduct(productIdPendingDelete);
+								}
+							}}
+						>
+							Continue
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</>
 	);
 }

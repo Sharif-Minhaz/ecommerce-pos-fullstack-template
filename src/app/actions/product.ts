@@ -104,8 +104,6 @@ export async function getVendorProducts() {
 
 		await connectToDatabase();
 
-		console.log("I am here dude");
-
 		const products = await Product.find({
 			vendor: session.user.id,
 		})
@@ -334,7 +332,7 @@ export async function updateProduct(productId: string, formData: FormData) {
 		await connectToDatabase();
 
 		// Check if product exists and belongs to the vendor
-		const existingProduct = await Product.findOne({
+		const existingProduct = await Product.exists({
 			_id: productId,
 			vendor: session.user.id,
 		});
@@ -392,14 +390,14 @@ export async function updateProduct(productId: string, formData: FormData) {
 		}
 
 		// Check if SKU already exists (excluding current product)
-		const existingSku = await Product.findOne({ sku, _id: { $ne: productId } });
+		const existingSku = await Product.exists({ sku, _id: { $ne: productId } });
 		if (existingSku) {
 			throw new Error("SKU already exists. Please choose a different one.");
 		}
 
 		// Check if barcode already exists (excluding current product)
 		if (barcode) {
-			const existingBarcode = await Product.findOne({ barcode, _id: { $ne: productId } });
+			const existingBarcode = await Product.exists({ barcode, _id: { $ne: productId } });
 			if (existingBarcode) {
 				throw new Error("Barcode already exists. Please choose a different one.");
 			}
@@ -444,6 +442,37 @@ export async function updateProduct(productId: string, formData: FormData) {
 			.populate("category", "name nameBN slug")
 			.populate("brand", "name nameBN slug");
 
+		// =============== ensure product found after update ================
+		if (!updatedProductResponse) {
+			throw new Error("Product not found after update");
+		}
+
+		// =============== optionally handle additional image uploads ================
+		const imageFiles = (formData.getAll("images") as File[]) || [];
+		const hasNewImages = imageFiles.some((file) => file && typeof file.size === "number" && file.size > 0);
+		if (hasNewImages) {
+			if (!CloudinaryService.isConfigured()) {
+				throw new Error("Cloudinary is not properly configured");
+			}
+
+			const uploadedImages: string[] = [];
+			for (const file of imageFiles) {
+				if (file && file.size > 0) {
+					try {
+						const uploadResult = await uploadProductImage(file);
+						uploadedImages.push(uploadResult.secure_url);
+					} catch (error) {
+						console.error("Failed to upload image:", error);
+					}
+				}
+			}
+
+			if (uploadedImages.length > 0) {
+				updatedProductResponse.gallery = [...(updatedProductResponse.gallery || []), ...uploadedImages];
+				await updatedProductResponse.save();
+			}
+		}
+
 		const result = convertToPlaintObject(updatedProductResponse);
 
 		revalidatePath("/my-shop");
@@ -473,17 +502,14 @@ export async function deleteProduct(productId: string) {
 		await connectToDatabase();
 
 		// Check if product exists and belongs to the vendor
-		const product = await Product.findOne({
+		const existingProduct = await Product.exists({
 			_id: productId,
 			vendor: session.user.id,
 		});
 
-		if (!product) {
+		if (!existingProduct) {
 			throw new Error("Product not found or access denied");
 		}
-
-		// Soft delete by setting isActive to false
-		await Product.findByIdAndUpdate(productId, { isActive: false });
 
 		revalidatePath("/my-shop");
 		revalidatePath("/products");

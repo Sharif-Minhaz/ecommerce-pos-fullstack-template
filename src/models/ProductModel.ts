@@ -121,8 +121,6 @@ const productSchema = new Schema<IProduct>(
 		barcode: {
 			type: String,
 			trim: true,
-			unique: true,
-			sparse: true,
 		},
 		weight: {
 			type: Number,

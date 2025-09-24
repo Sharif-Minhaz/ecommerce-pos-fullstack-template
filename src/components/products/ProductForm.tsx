@@ -11,10 +11,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Loader2, Plus, X, Image as ImageIcon, Trash2, Pencil } from "lucide-react";
 import Image from "next/image";
-import { IProduct } from "@/types/product";
+import { IProduct, ProductUnit } from "@/types/product";
 import { getCategories, createCategoryQuick } from "@/app/actions/category";
 import { getBrands, createBrandQuick } from "@/app/actions/brand";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { UNITS } from "@/constant";
 
 interface ProductFormProps {
 	product?: IProduct;
@@ -41,36 +42,16 @@ type BrandsResult = { success: boolean; brands?: Brand[] };
 type CreateCategoryRes = { success: boolean; category?: { _id: string }; error?: string };
 type CreateBrandRes = { success: boolean; brand?: { _id: string }; error?: string };
 
-interface ProductFormState {
-	title: string;
-	titleBN: string;
-	description: string;
-	descriptionBN: string;
-	unit: string;
-	stock: number;
-	price: number;
-	salePrice: string;
-	highlights: string;
-	highlightsBN: string;
-	specification: string;
-	specificationBN: string;
-	category: string;
-	brand: string;
-	sku: string;
-	barcode: string;
-	weight: string;
-	warranty: string;
-	warrantyBN: string;
-	tags: string;
-	isActive: boolean;
-	isFeatured: boolean;
-}
+const initialMenuState = {
+	name: "",
+	nameBN: "",
+	description: "",
+	descriptionBN: "",
+	imageFile: null as File | null,
+};
 
-export default function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
-	const [loading, setLoading] = useState(false);
-	const [categories, setCategories] = useState<Category[]>([]);
-	const [brands, setBrands] = useState<Brand[]>([]);
-	const [formData, setFormData] = useState<ProductFormState>({
+const getInitialFormValues = (product: IProduct) => {
+	return {
 		title: product?.title || "",
 		titleBN: product?.titleBN || "",
 		description: product?.description || "",
@@ -93,25 +74,20 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 		tags: product?.tags?.join(", ") || "",
 		isActive: product?.isActive ?? true,
 		isFeatured: product?.isFeatured ?? false,
-	});
+	};
+};
+
+export default function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
+	const [loading, setLoading] = useState(false);
+	const [categories, setCategories] = useState<Category[]>([]);
+	const [brands, setBrands] = useState<Brand[]>([]);
+	const [formData, setFormData] = useState(() => getInitialFormValues(product as IProduct));
 	const [images, setImages] = useState<File[]>([]);
 	const [previewImages, setPreviewImages] = useState<string[]>(product?.gallery || []);
 	const [categorySheetOpen, setCategorySheetOpen] = useState(false);
 	const [brandSheetOpen, setBrandSheetOpen] = useState(false);
-	const [quickCategory, setQuickCategory] = useState({
-		name: "",
-		nameBN: "",
-		description: "",
-		descriptionBN: "",
-		imageFile: null as File | null,
-	});
-	const [quickBrand, setQuickBrand] = useState({
-		name: "",
-		nameBN: "",
-		description: "",
-		descriptionBN: "",
-		imageFile: null as File | null,
-	});
+	const [quickCategory, setQuickCategory] = useState(initialMenuState);
+	const [quickBrand, setQuickBrand] = useState(initialMenuState);
 
 	// =============== fetch categories and brands ================
 	useEffect(() => {
@@ -122,15 +98,15 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 					unknown
 				];
 
-				const catRes = categoriesResult as CategoriesResult;
-				const brRes = brandsResult as BrandsResult;
+				const categoryResponse = categoriesResult as CategoriesResult;
+				const brandNameResponse = brandsResult as BrandsResult;
 
-				if (catRes.success) {
-					setCategories(catRes.categories ?? []);
+				if (categoryResponse.success) {
+					setCategories(categoryResponse.categories ?? []);
 				}
 
-				if (brRes.success) {
-					setBrands(brRes.brands ?? []);
+				if (brandNameResponse.success) {
+					setBrands(brandNameResponse.brands ?? []);
 				}
 			} catch (error) {
 				console.error("Failed to fetch form data:", error);
@@ -141,7 +117,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 	}, []);
 
 	// =============== handle input change ================
-	const handleInputChange = <K extends keyof ProductFormState>(field: K, value: ProductFormState[K]) => {
+	const handleInputChange = <K extends keyof typeof formData>(field: K, value: (typeof formData)[K]) => {
 		setFormData((prev) => ({
 			...prev,
 			[field]: value,
@@ -151,13 +127,13 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 	// =============== quick add category ================
 	const submitQuickCategory = async () => {
 		try {
-			const fd = new FormData();
-			fd.append("name", quickCategory.name);
-			fd.append("nameBN", quickCategory.nameBN);
-			fd.append("description", quickCategory.description);
-			fd.append("descriptionBN", quickCategory.descriptionBN);
-			if (quickCategory.imageFile) fd.append("image", quickCategory.imageFile);
-			const res = (await createCategoryQuick(fd)) as unknown as CreateCategoryRes;
+			const formData = new FormData();
+			formData.append("name", quickCategory.name);
+			formData.append("nameBN", quickCategory.nameBN);
+			formData.append("description", quickCategory.description);
+			formData.append("descriptionBN", quickCategory.descriptionBN);
+			if (quickCategory.imageFile) formData.append("image", quickCategory.imageFile);
+			const res = (await createCategoryQuick(formData)) as unknown as CreateCategoryRes;
 			if (res.success) {
 				// refresh list and set selected
 				const cats = (await getCategories()) as unknown as CategoriesResult;
@@ -167,12 +143,13 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 					if (createdId) handleInputChange("category", createdId);
 				}
 				setCategorySheetOpen(false);
-				setQuickCategory({ name: "", nameBN: "", description: "", descriptionBN: "", imageFile: null });
+				setQuickCategory(initialMenuState);
 				toast.success("Category created");
 			} else {
 				toast.error(res.error || "Failed to create category");
 			}
-		} catch {
+		} catch (error) {
+			console.error(error);
 			toast.error("Failed to create category");
 		}
 	};
@@ -180,13 +157,15 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 	// =============== quick add brand ================
 	const submitQuickBrand = async () => {
 		try {
-			const fd = new FormData();
-			fd.append("name", quickBrand.name);
-			fd.append("nameBN", quickBrand.nameBN);
-			fd.append("description", quickBrand.description);
-			fd.append("descriptionBN", quickBrand.descriptionBN);
-			if (quickBrand.imageFile) fd.append("image", quickBrand.imageFile);
-			const res = (await createBrandQuick(fd)) as unknown as CreateBrandRes;
+			const formData = new FormData();
+			formData.append("name", quickBrand.name);
+			formData.append("nameBN", quickBrand.nameBN);
+			formData.append("description", quickBrand.description);
+			formData.append("descriptionBN", quickBrand.descriptionBN);
+			if (quickBrand.imageFile) formData.append("image", quickBrand.imageFile);
+
+			const res = (await createBrandQuick(formData)) as unknown as CreateBrandRes;
+
 			if (res.success) {
 				const brs = (await getBrands()) as unknown as BrandsResult;
 				if (brs.success) {
@@ -195,12 +174,13 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 					if (createdId) handleInputChange("brand", createdId);
 				}
 				setBrandSheetOpen(false);
-				setQuickBrand({ name: "", nameBN: "", description: "", descriptionBN: "", imageFile: null });
+				setQuickBrand(initialMenuState);
 				toast.success("Brand created");
 			} else {
 				toast.error(res.error || "Failed to create brand");
 			}
-		} catch {
+		} catch (error) {
+			console.error(error);
 			toast.error("Failed to create brand");
 		}
 	};
@@ -217,9 +197,9 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 	};
 
 	// =============== remove image ================
-	const removeImage = (index: number) => {
-		setImages((prev) => prev.filter((_, i) => i !== index));
-		setPreviewImages((prev) => prev.filter((_, i) => i !== index));
+	const removeImage = (imageIndex: number) => {
+		setImages((prev) => prev.filter((_, index) => index !== imageIndex));
+		setPreviewImages((prev) => prev.filter((_, index) => index !== imageIndex));
 	};
 
 	// =============== remove existing image ================
@@ -235,29 +215,11 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 		try {
 			const formDataObj = new FormData();
 
-			// =============== add form fields manually to avoid circular reference issues ================
-			if (formData.title) formDataObj.append("title", formData.title);
-			if (formData.titleBN) formDataObj.append("titleBN", formData.titleBN);
-			if (formData.description) formDataObj.append("description", formData.description);
-			if (formData.descriptionBN) formDataObj.append("descriptionBN", formData.descriptionBN);
-			if (formData.unit) formDataObj.append("unit", formData.unit);
-			if (formData.stock !== undefined) formDataObj.append("stock", formData.stock.toString());
-			if (formData.price !== undefined) formDataObj.append("price", formData.price.toString());
-			if (formData.salePrice) formDataObj.append("salePrice", formData.salePrice);
-			if (formData.highlights) formDataObj.append("highlights", formData.highlights);
-			if (formData.highlightsBN) formDataObj.append("highlightsBN", formData.highlightsBN);
-			if (formData.specification) formDataObj.append("specification", formData.specification);
-			if (formData.specificationBN) formDataObj.append("specificationBN", formData.specificationBN);
-			if (formData.category) formDataObj.append("category", formData.category);
-			if (formData.brand) formDataObj.append("brand", formData.brand);
-			if (formData.sku) formDataObj.append("sku", formData.sku);
-			if (formData.barcode) formDataObj.append("barcode", formData.barcode);
-			if (formData.weight) formDataObj.append("weight", formData.weight);
-			if (formData.warranty) formDataObj.append("warranty", formData.warranty);
-			if (formData.warrantyBN) formDataObj.append("warrantyBN", formData.warrantyBN);
-			if (formData.tags) formDataObj.append("tags", formData.tags);
-			formDataObj.append("isActive", formData.isActive.toString());
-			formDataObj.append("isFeatured", formData.isFeatured.toString());
+			Object.entries(formData).forEach(([key, value]) => {
+				if (value !== undefined && value !== "") {
+					formDataObj.append(key, value as string);
+				}
+			});
 
 			// Add images
 			images.forEach((image) => {
@@ -277,6 +239,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 				toast.success(product ? "Product updated successfully!" : "Product created successfully!");
 				onCancel();
 			} else {
+				console.error("Failed to save product", result);
 				toast.error(result.error || "Failed to save product");
 			}
 		} catch (error) {
@@ -297,7 +260,6 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 
 	return (
 		<form onSubmit={handleSubmit} className="space-y-6">
-			{/* Basic Information */}
 			<Card>
 				<CardHeader>
 					<CardTitle>Basic Information</CardTitle>
@@ -384,23 +346,18 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 							<Label htmlFor="unit">Unit *</Label>
 							<Select
 								value={formData.unit}
-								onValueChange={(value) => handleInputChange("unit", value)}
+								onValueChange={(value) => handleInputChange("unit", value as ProductUnit)}
 								required
 							>
 								<SelectTrigger className="w-full">
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="kg">Kilogram (kg)</SelectItem>
-									<SelectItem value="pcs">Pieces (pcs)</SelectItem>
-									<SelectItem value="g">Gram (g)</SelectItem>
-									<SelectItem value="l">Liter (l)</SelectItem>
-									<SelectItem value="ml">Milliliter (ml)</SelectItem>
-									<SelectItem value="box">Box</SelectItem>
-									<SelectItem value="pack">Pack</SelectItem>
-									<SelectItem value="pair">Pair</SelectItem>
-									<SelectItem value="set">Set</SelectItem>
-									<SelectItem value="dozen">Dozen</SelectItem>
+									{UNITS.map((unit) => (
+										<SelectItem key={unit.id} value={unit.value}>
+											{unit.label}
+										</SelectItem>
+									))}
 								</SelectContent>
 							</Select>
 						</div>
