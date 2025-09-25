@@ -77,7 +77,12 @@ export async function createPosPurchase(input: CreatePosPurchaseInput) {
 					brand: new Types.ObjectId(),
 					vendor: new Types.ObjectId(session.user.id),
 					sku,
-					gallery: ["https://via.placeholder.com/600x400?text=Product"],
+					gallery: [
+						{
+							url: "https://via.placeholder.com/600x400?text=Product",
+							imageKey: "placeholder/product",
+						} as any,
+					],
 					isActive: true,
 				});
 			}

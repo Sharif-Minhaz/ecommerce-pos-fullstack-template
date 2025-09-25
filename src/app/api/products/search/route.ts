@@ -35,7 +35,12 @@ export async function GET(request: Request) {
 			title: p.title,
 			slug: p.slug,
 			price: p.salePrice ?? p.price,
-			thumbnail: Array.isArray(p.gallery) && p.gallery.length > 0 ? p.gallery[0] : null,
+			thumbnail:
+				Array.isArray(p.gallery) && p.gallery.length > 0
+					? p.gallery[0] && typeof p.gallery[0] === "object"
+						? p.gallery[0].url
+						: p.gallery[0]
+					: null,
 		}));
 
 		return NextResponse.json({ success: true, products: mapped });

@@ -13,6 +13,7 @@ import { addToWishlist, removeFromWishlist, getWishlistIds } from "@/app/actions
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
+import defaultProductImage from "@/assets/placeholder-product.webp";
 
 // local view type for reviews
 type ReviewView = { _id: string; user?: { _id?: string; name?: string }; rating: number; review: string };
@@ -31,7 +32,11 @@ export default function ProductDetails({ product }: { product: IProduct }) {
 	// =============== state for quantity ================
 	const [quantity, setQuantity] = useState(1);
 	// =============== state for selected main image ================
-	const [selectedImage, setSelectedImage] = useState(product.gallery[0]);
+	const [selectedImage, setSelectedImage] = useState(
+		((product.gallery[0] as unknown as { url?: string })?.url as string) ||
+			(product.gallery[0] as unknown as string as string) ||
+			(defaultProductImage as unknown as string)
+	);
 	// =============== reviews state ================
 	const [reviews, setReviews] = useState<ReviewView[]>([]);
 	const [loadingReviews, setLoadingReviews] = useState(true);
@@ -177,24 +182,28 @@ export default function ProductDetails({ product }: { product: IProduct }) {
 				<div className="w-full md:w-1/2 flex flex-col gap-4">
 					<Card className="p-4 flex items-center justify-center min-h-[320px] min-w-[320px] max-w-full relative">
 						<div className="w-[320px] h-[320px] relative">
-							<SquareMagnifier src={selectedImage} alt={product.title} />
+							<SquareMagnifier src={selectedImage as string} alt={product.title} />
 						</div>
 					</Card>
 					{/* =============== gallery thumbnails (if multiple) =============== */}
 					{product.gallery.length > 1 && (
 						<div className="flex gap-2">
-							{product.gallery.map((img: string, idx: number) => (
+							{product.gallery?.map((img: any, idx: number) => (
 								<div
-									key={img}
+									key={(img?.imageKey as string) || (img as string)}
 									className={`w-16 h-16 border-2 rounded overflow-hidden cursor-pointer transition-all duration-200 ${
-										selectedImage === img
+										selectedImage === (img?.url || img)
 											? "border-primary shadow-md"
 											: "border-gray-200 hover:border-gray-300"
 									}`}
-									onClick={() => handleImageClick(img)}
+									onClick={() => handleImageClick(img?.url || (img as string))}
 								>
 									<Image
-										src={img}
+										src={
+											(img?.url as string) ||
+											(img as string) ||
+											(defaultProductImage as unknown as string)
+										}
 										alt={product.title + " " + idx}
 										width={64}
 										height={64}

@@ -109,7 +109,10 @@ export default function CartPage() {
 									{/* =============== product image =============== */}
 									<div className="w-24 h-24 relative flex-shrink-0">
 										<Image
-											src={item.product.gallery[0]}
+											src={
+												(item.product.gallery[0] as any)?.url ||
+												(item.product.gallery[0] as any)
+											}
 											alt={item.product.title}
 											fill
 											sizes="96px"

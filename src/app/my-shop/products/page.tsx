@@ -52,6 +52,12 @@ export default function VendorProductsPage() {
 		fetchProducts();
 	}, [status, session, router]);
 
+	useEffect(() => {
+		if (productIdPendingDelete) {
+			setDeleteDialogOpen(true);
+		}
+	}, [productIdPendingDelete]);
+
 	// =============== fetch vendor products ================
 	const fetchProducts = async () => {
 		try {
@@ -77,6 +83,7 @@ export default function VendorProductsPage() {
 			const result = await createProduct(formData);
 
 			if (result.success) {
+				setShowForm(false);
 				fetchProducts(); // Refresh the list
 			}
 			return result;
@@ -95,6 +102,7 @@ export default function VendorProductsPage() {
 
 			const result = await updateProduct(editingProduct!._id?.toString(), formData);
 			if (result.success) {
+				setShowForm(false);
 				fetchProducts(); // Refresh the list
 			}
 			return result;
@@ -141,11 +149,17 @@ export default function VendorProductsPage() {
 
 	// =============== calculate statistics ================
 	const totalProducts = products.length;
-	const activeProducts = products.filter((p) => p.isActive).length;
-	const featuredProducts = products.filter((p) => p.isFeatured).length;
-	const totalValue = products.reduce((sum, p) => sum + p.stock * p.price, 0);
+	const activeProducts = products.filter((product) => product.isActive).length;
+	const featuredProducts = products.filter((product) => product.isFeatured).length;
+	const totalValue = products.reduce((sum, product) => sum + product.stock * product.price, 0);
 
-	if (status === "loading" || loading) {
+	const confirmDeleteHandler = () => {
+		if (productIdPendingDelete) {
+			handleDeleteProduct(productIdPendingDelete);
+		}
+	};
+
+	if (loading) {
 		return (
 			<div className="min-h-screen flex items-center justify-center">
 				<Loader2 className="h-8 w-8 animate-spin" />
@@ -284,7 +298,10 @@ export default function VendorProductsPage() {
 								<div className="relative h-48 bg-gray-100 rounded-t-lg overflow-hidden">
 									{product.gallery && product.gallery.length > 0 ? (
 										<Image
-											src={product.gallery[0]}
+											src={
+												(product.gallery[0] as unknown as { url?: string })?.url ||
+												(product.gallery[0] as unknown as string)
+											}
 											alt={product.title}
 											fill
 											className="object-cover"
@@ -304,11 +321,11 @@ export default function VendorProductsPage() {
 									<div className="space-y-2 mb-4">
 										<div className="flex justify-between text-sm">
 											<span className="text-muted-foreground">Category:</span>
-											<span>{product?.category?.name}</span>
+											<span>{(product?.category as unknown as { name?: string })?.name}</span>
 										</div>
 										<div className="flex justify-between text-sm">
 											<span className="text-muted-foreground">Brand:</span>
-											<span>{product?.brand?.name}</span>
+											<span>{(product?.brand as unknown as { name?: string })?.name}</span>
 										</div>
 										<div className="flex justify-between text-sm">
 											<span className="text-muted-foreground">SKU:</span>
@@ -361,10 +378,7 @@ export default function VendorProductsPage() {
 										<Button
 											variant="destructive"
 											size="sm"
-											onClick={() => {
-												setProductIdPendingDelete(product._id?.toString() || "");
-												setDeleteDialogOpen(true);
-											}}
+											onClick={() => setProductIdPendingDelete(product._id?.toString() || "")}
 											disabled={deletingProduct === product._id}
 										>
 											{deletingProduct === product._id ? (
@@ -394,14 +408,8 @@ export default function VendorProductsPage() {
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction
-							onClick={() => {
-								if (productIdPendingDelete) {
-									handleDeleteProduct(productIdPendingDelete);
-								}
-							}}
-						>
-							Continue
+						<AlertDialogAction className="bg-red-500" onClick={confirmDeleteHandler}>
+							Delete
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

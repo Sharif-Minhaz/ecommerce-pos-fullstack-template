@@ -3,14 +3,7 @@
 import React, { useState } from "react";
 import { useCart } from "@/hooks/useCart";
 import { Button } from "@/components/ui/button";
-import {
-	Sheet,
-	SheetContent,
-	SheetHeader,
-	SheetTitle,
-	SheetTrigger,
-	SheetFooter,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from "@/components/ui/sheet";
 import { ShoppingCart, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -78,7 +71,10 @@ export function CartSheet() {
 									{/* =============== product image =============== */}
 									<div className="w-16 h-16 relative flex-shrink-0">
 										<Image
-											src={item.product.gallery[0]}
+											src={
+												(item.product.gallery[0] as any)?.url ||
+												(item.product.gallery[0] as any)
+											}
 											alt={item.product.title}
 											fill
 											sizes="64px"
@@ -89,18 +85,13 @@ export function CartSheet() {
 
 									{/* =============== product info =============== */}
 									<div className="flex-1 min-w-0">
-										<h4 className="font-medium text-sm truncate">
-											{item.product.title}
-										</h4>
-										<p className="text-sm text-gray-500">
-											Qty: {item.quantity}
-										</p>
+										<h4 className="font-medium text-sm truncate">{item.product.title}</h4>
+										<p className="text-sm text-gray-500">Qty: {item.quantity}</p>
 										<p className="text-sm font-semibold">
 											SAR{" "}
-											{(
-												(item.product.salePrice ?? item.product.price) *
-												item.quantity
-											).toFixed(2)}
+											{((item.product.salePrice ?? item.product.price) * item.quantity).toFixed(
+												2
+											)}
 										</p>
 									</div>
 
@@ -136,11 +127,7 @@ export function CartSheet() {
 							</div>
 							<div className="flex gap-2">
 								<Link href="/cart" className="flex-1">
-									<Button
-										className="w-full"
-										variant="outline"
-										onClick={() => setIsOpen(false)}
-									>
+									<Button className="w-full" variant="outline" onClick={() => setIsOpen(false)}>
 										View Details
 									</Button>
 								</Link>

@@ -237,7 +237,10 @@ export default async function RiderDashboardPage() {
 																<div className="relative w-12 h-12 flex-shrink-0">
 																	{item.product?.gallery?.[0] ? (
 																		<Image
-																			src={item.product.gallery[0]}
+																			src={
+																				(item.product.gallery[0] as any)?.url ||
+																				(item.product.gallery[0] as any)
+																			}
 																			alt={item.product.title}
 																			fill
 																			sizes="48px"

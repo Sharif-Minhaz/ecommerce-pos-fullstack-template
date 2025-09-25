@@ -39,13 +39,20 @@ const productSchema = new Schema<IProduct>(
 		},
 		gallery: [
 			{
-				type: String,
-				required: [true, "Product image URL is required"],
-				validate: {
-					validator: function (v: string) {
-						return /^https?:\/\/.+/.test(v);
+				url: {
+					type: String,
+					required: [true, "Product image URL is required"],
+					validate: {
+						validator: function (v: string) {
+							return /^https?:\/\/.+/.test(v);
+						},
+						message: "Image URL must be a valid URL",
 					},
-					message: "Image URL must be a valid URL",
+				},
+				imageKey: {
+					type: String,
+					required: [true, "Product image key is required"],
+					trim: true,
 				},
 			},
 		],

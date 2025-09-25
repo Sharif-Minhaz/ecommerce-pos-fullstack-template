@@ -3,17 +3,7 @@ import { IUser } from "./user";
 import { ICategory } from "./category";
 import { IBrand } from "./brand";
 
-export type ProductUnit =
-	| "kg"
-	| "pcs"
-	| "g"
-	| "l"
-	| "ml"
-	| "box"
-	| "pack"
-	| "pair"
-	| "set"
-	| "dozen";
+export type ProductUnit = "kg" | "pcs" | "g" | "l" | "ml" | "box" | "pack" | "pair" | "set" | "dozen";
 
 // Base interface without populated fields
 export interface IProductBase {
@@ -22,7 +12,7 @@ export interface IProductBase {
 	slug: string;
 	description: string;
 	descriptionBN: string;
-	gallery: string[];
+	gallery: { url: string; imageKey: string }[];
 	unit: ProductUnit;
 	stock: number;
 	price: number;

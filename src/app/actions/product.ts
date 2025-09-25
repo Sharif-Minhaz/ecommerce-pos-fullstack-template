@@ -10,6 +10,8 @@ import { uploadProductImage, CloudinaryService } from "@/lib/cloudinary";
 import { revalidatePath } from "next/cache";
 import { convertToPlaintObject } from "@/lib/utils";
 
+type ProductImage = { url: string; imageKey: string };
+
 // =============== get all active products (public) ================
 export async function getPublicProducts() {
 	try {
@@ -305,7 +307,7 @@ export async function createProduct(formData: FormData) {
 			warranty,
 			warrantyBN,
 			tags,
-			gallery: [], // Will be populated after image upload
+			gallery: [], // Will be populated after image upload as {url, imageKey}
 		};
 
 		// Create product
@@ -314,13 +316,13 @@ export async function createProduct(formData: FormData) {
 
 		// Handle image uploads
 		const imageFiles = formData.getAll("images") as File[];
-		const uploadedImages: string[] = [];
+		const uploadedImages: ProductImage[] = [];
 
 		for (const file of imageFiles) {
 			if (file.size > 0) {
 				try {
 					const uploadResult = await uploadProductImage(file);
-					uploadedImages.push(uploadResult.secure_url);
+					uploadedImages.push({ url: uploadResult.secure_url, imageKey: uploadResult.public_id });
 				} catch (error) {
 					console.error("Failed to upload image:", error);
 				}
@@ -329,7 +331,7 @@ export async function createProduct(formData: FormData) {
 
 		// Update product with uploaded images
 		if (uploadedImages.length > 0) {
-			productResponse.gallery = uploadedImages;
+			productResponse.gallery = uploadedImages as unknown as ProductImage[];
 			await productResponse.save();
 		}
 
@@ -439,7 +441,7 @@ export async function updateProduct(productId: string, formData: FormData) {
 			discountRate = Math.round(((price - salePrice) / price) * 100);
 		}
 
-		// Update product
+		// Update main fields first
 		const updatedProductResponse = await Product.findByIdAndUpdate(
 			productId,
 			{
@@ -477,6 +479,22 @@ export async function updateProduct(productId: string, formData: FormData) {
 			throw new Error("Product not found after update");
 		}
 
+		// =============== reconcile existing images from client (by URL) ================
+		const existingImageUrls = (formData.getAll("existingImages") as string[]).filter(Boolean);
+		if (Array.isArray(updatedProductResponse.gallery)) {
+			const currentGallery = updatedProductResponse.gallery as unknown as ProductImage[] | string[];
+			if (existingImageUrls.length > 0) {
+				(updatedProductResponse as unknown as { gallery: ProductImage[] | string[] }).gallery = (
+					currentGallery as Array<ProductImage | string>
+				).filter((g) =>
+					typeof g === "object"
+						? existingImageUrls.includes((g as ProductImage).url)
+						: existingImageUrls.includes(String(g))
+				) as ProductImage[];
+				await updatedProductResponse.save();
+			}
+		}
+
 		// =============== optionally handle additional image uploads ================
 		const imageFiles = (formData.getAll("images") as File[]) || [];
 		const hasNewImages = imageFiles.some((file) => file && typeof file.size === "number" && file.size > 0);
@@ -485,12 +503,12 @@ export async function updateProduct(productId: string, formData: FormData) {
 				throw new Error("Cloudinary is not properly configured");
 			}
 
-			const uploadedImages: string[] = [];
+			const uploadedImages: ProductImage[] = [];
 			for (const file of imageFiles) {
 				if (file && file.size > 0) {
 					try {
 						const uploadResult = await uploadProductImage(file);
-						uploadedImages.push(uploadResult.secure_url);
+						uploadedImages.push({ url: uploadResult.secure_url, imageKey: uploadResult.public_id });
 					} catch (error) {
 						console.error("Failed to upload image:", error);
 					}
@@ -498,7 +516,11 @@ export async function updateProduct(productId: string, formData: FormData) {
 			}
 
 			if (uploadedImages.length > 0) {
-				updatedProductResponse.gallery = [...(updatedProductResponse.gallery || []), ...uploadedImages];
+				(updatedProductResponse as unknown as { gallery: ProductImage[] }).gallery = [
+					...(((updatedProductResponse as unknown as { gallery?: ProductImage[] }).gallery ||
+						[]) as ProductImage[]),
+					...uploadedImages,
+				];
 				await updatedProductResponse.save();
 			}
 		}
@@ -531,15 +553,33 @@ export async function deleteProduct(productId: string) {
 
 		await connectToDatabase();
 
-		// Check if product exists and belongs to the vendor
-		const existingProduct = await Product.exists({
-			_id: productId,
-			vendor: session.user.id,
-		});
+		// Find product first to clean up Cloudinary images
+		const product = await Product.findOne({ _id: productId, vendor: session.user.id });
 
-		if (!existingProduct) {
+		if (!product) {
 			throw new Error("Product not found or access denied");
 		}
+
+		// attempt to delete images from cloudinary if configured
+		if (
+			CloudinaryService.isConfigured() &&
+			Array.isArray((product as unknown as { gallery?: ProductImage[] | string[] }).gallery)
+		) {
+			for (const img of ((product as unknown as { gallery: ProductImage[] | string[] }).gallery || []) as Array<
+				ProductImage | string
+			>) {
+				const imageKey = typeof img === "object" ? (img as ProductImage).imageKey : undefined;
+				if (imageKey) {
+					try {
+						await CloudinaryService.deleteFile(imageKey);
+					} catch (e) {
+						console.error("Failed to delete cloudinary image:", e);
+					}
+				}
+			}
+		}
+
+		await Product.deleteOne({ _id: productId, vendor: session.user.id });
 
 		revalidatePath("/my-shop");
 		revalidatePath("/products");
@@ -584,13 +624,13 @@ export async function uploadProductImages(productId: string, formData: FormData)
 
 		// Handle image uploads
 		const imageFiles = formData.getAll("images") as File[];
-		const uploadedImages: string[] = [];
+		const uploadedImages: ProductImage[] = [];
 
 		for (const file of imageFiles) {
 			if (file.size > 0) {
 				try {
 					const uploadResult = await uploadProductImage(file);
-					uploadedImages.push(uploadResult.secure_url);
+					uploadedImages.push({ url: uploadResult.secure_url, imageKey: uploadResult.public_id });
 				} catch (error) {
 					console.error("Failed to upload image:", error);
 				}
@@ -599,7 +639,10 @@ export async function uploadProductImages(productId: string, formData: FormData)
 
 		// Update product with new images
 		if (uploadedImages.length > 0) {
-			product.gallery = [...product.gallery, ...uploadedImages];
+			(product as unknown as { gallery: ProductImage[] }).gallery = [
+				...(((product as unknown as { gallery?: ProductImage[] }).gallery || []) as ProductImage[]),
+				...uploadedImages,
+			];
 			await product.save();
 		}
 
@@ -639,8 +682,23 @@ export async function removeProductImage(productId: string, imageUrl: string) {
 			throw new Error("Product not found or access denied");
 		}
 
-		// Remove image from gallery
-		product.gallery = product.gallery.filter((img: string) => img !== imageUrl);
+		// Remove image from gallery and delete from cloudinary if possible
+		const currentGallery = ((product as unknown as { gallery?: ProductImage[] | string[] }).gallery || []) as Array<
+			ProductImage | string
+		>;
+		const toRemove = currentGallery.find(
+			(img) => (typeof img === "object" ? (img as ProductImage).url : (img as string)) === imageUrl
+		) as ProductImage | string | undefined;
+		if (toRemove && typeof toRemove === "object" && toRemove.imageKey && CloudinaryService.isConfigured()) {
+			try {
+				await CloudinaryService.deleteFile(toRemove.imageKey);
+			} catch (e) {
+				console.error("Failed to delete cloudinary image:", e);
+			}
+		}
+		(product as unknown as { gallery: ProductImage[] | string[] }).gallery = currentGallery.filter(
+			(img) => (typeof img === "object" ? (img as ProductImage).url : (img as string)) !== imageUrl
+		) as ProductImage[];
 		await product.save();
 
 		revalidatePath("/my-shop");

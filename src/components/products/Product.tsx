@@ -8,6 +8,7 @@ import Image from "next/image";
 import React from "react";
 import Link from "next/link";
 import { useCart } from "@/hooks/useCart";
+import defaultProductImage from "@/assets/placeholder-product.webp";
 
 // =============== type guard for vendor shop ================
 function isVendorShop(vendor: unknown): vendor is { shopName: string; registrationNumber: string } {
@@ -38,7 +39,9 @@ export default function Product({ product }: { product: IProduct }) {
 				<Link href={`/products/${product.slug}`} className="w-full">
 					<div className="w-full h-[170px] mx-auto relative mb-2 rounded bg-white flex items-center justify-center">
 						<Image
-							src={product.gallery[0]}
+							src={
+								(product?.gallery[0] as any)?.url || (product?.gallery[0] as any) || defaultProductImage
+							}
 							alt={product.title}
 							fill
 							sizes="170px"

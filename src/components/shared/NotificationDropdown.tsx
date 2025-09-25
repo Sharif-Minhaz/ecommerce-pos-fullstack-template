@@ -159,12 +159,12 @@ export function NotificationDropdown() {
 	}, [session?.user?.id, fetchUnreadCount]);
 
 	// =============== refresh unread count periodically ================
-	useEffect(() => {
-		if (!session?.user?.id) return;
+	// useEffect(() => {
+	// 	if (!session?.user?.id) return;
 
-		const interval = setInterval(fetchUnreadCount, 30000); // refresh every 30 seconds
-		return () => clearInterval(interval);
-	}, [session?.user?.id, fetchUnreadCount]);
+	// 	const interval = setInterval(fetchUnreadCount, 30000); // refresh every 30 seconds
+	// 	return () => clearInterval(interval);
+	// }, [session?.user?.id, fetchUnreadCount]);
 
 	if (!session) return null;
 

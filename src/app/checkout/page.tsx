@@ -372,9 +372,15 @@ export default function CheckoutPage() {
 							<div className="divide-y">
 								{cart.map((item) => (
 									<div key={String(item.product._id)} className="flex items-center gap-3 py-3">
-										<img
-											src={item.product.gallery[0]}
+										<Image
+											src={
+												(item.product.gallery[0] as any)?.url ||
+												(item.product.gallery[0] as any)
+											}
 											alt={item.product.title}
+											fill
+											sizes="48px"
+											style={{ objectFit: "contain" }}
 											className="w-14 h-14 object-contain rounded border"
 										/>
 										<div className="flex-1 min-w-0">

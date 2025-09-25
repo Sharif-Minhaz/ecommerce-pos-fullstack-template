@@ -7,7 +7,7 @@ export default async function MyOrdersPage() {
 	if (!result.success) {
 		return <div className="container mx-auto py-8 px-2 max-w-7xl">Failed to load orders</div>;
 	}
-	type PopulatedItem = { _id: string; quantity: number; product?: { title: string; gallery?: string[] } };
+	type PopulatedItem = { _id: string; quantity: number; product?: { title: string; gallery?: any[] } };
 	type PopulatedOrder = {
 		_id: string;
 		orderNumber: string;
@@ -37,7 +37,10 @@ export default async function MyOrdersPage() {
 										<div className="relative w-12 h-12 flex-shrink-0">
 											{it.product?.gallery?.[0] ? (
 												<Image
-													src={it.product.gallery[0]}
+													src={
+														(it.product.gallery[0] as any)?.url ||
+														(it.product.gallery[0] as any)
+													}
 													alt={it.product.title}
 													fill
 													sizes="48px"

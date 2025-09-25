@@ -23,7 +23,7 @@ export default async function ManageOrdersPage() {
 	};
 
 	const riders: RiderLite[] = ridersResult.success ? (ridersResult.riders as RiderLite[]) : [];
-	type PopulatedItem = { _id: string; quantity: number; product?: { title: string; gallery?: string[] } };
+	type PopulatedItem = { _id: string; quantity: number; product?: { title: string; gallery?: any[] } };
 	type PopulatedOrder = {
 		_id: string;
 		orderNumber: string;
@@ -82,7 +82,10 @@ export default async function ManageOrdersPage() {
 													<div className="relative w-12 h-12 flex-shrink-0">
 														{it.product?.gallery?.[0] ? (
 															<Image
-																src={it.product.gallery[0]}
+																src={
+																	(it.product.gallery[0] as any)?.url ||
+																	(it.product.gallery[0] as any)
+																}
 																alt={it.product.title}
 																fill
 																sizes="48px"
