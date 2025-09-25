@@ -173,6 +173,36 @@ export async function createProduct(formData: FormData) {
 			throw new Error("Cloudinary is not properly configured");
 		}
 
+		const formInfo = Object.fromEntries(formData);
+		console.log(formInfo);
+
+		// {
+		// 	title: 'Aut fugiat facilis ',
+		// 	titleBN: 'Laborum Et vitae no',
+		// 	description: 'Facilis itaque elit',
+		// 	descriptionBN: 'Cum recusandae Irur',
+		// 	unit: 'ml',
+		// 	stock: '174',
+		// 	price: '274',
+		// 	salePrice: '127',
+		// 	highlights: 'Possimus qui velit ',
+		// 	highlightsBN: 'Distinctio Sit aute',
+		// 	specification: 'Velit atque molestia',
+		// 	specificationBN: 'Quis incididunt enim',
+		// 	category: '68d393da8d4f85d987a723fe',
+		// 	brand: '68b5789c0aef8536e065b467',
+		// 	sku: 'Aut deleniti reprehe',
+		// 	barcode: 'Velit labore non ut ',
+		// 	weight: '97',
+		// 	warranty: 'Commodi rerum sunt s',
+		// 	warrantyBN: 'Elit molestiae nesc',
+		// 	tags: 'Recusandae Numquam ',
+		// 	isActive: 'true',
+		// 	isFeatured: 'false'
+		//   }
+
+		// return;
+
 		// Extract form data
 		const title = formData.get("title") as string;
 		const titleBN = formData.get("titleBN") as string;

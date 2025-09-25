@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "sonner";
 import { Loader2, Plus, X, Image as ImageIcon, Trash2, Pencil } from "lucide-react";
 import Image from "next/image";
@@ -16,6 +17,14 @@ import { getCategories, createCategoryQuick } from "@/app/actions/category";
 import { getBrands, createBrandQuick } from "@/app/actions/brand";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { UNITS } from "@/constant";
+import { productSchema } from "@/schema/product-schema";
+import { quickCategorySchema, type QuickCategoryValues } from "@/schema/category-schema";
+import { quickBrandSchema, type QuickBrandValues } from "@/schema/brand-schema";
+import { IBrand } from "@/types/brand";
+import { ICategory } from "@/types/category";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 interface ProductFormProps {
 	product?: IProduct;
@@ -23,31 +32,21 @@ interface ProductFormProps {
 	onCancel: () => void;
 }
 
-interface Category {
-	_id: string;
-	name: string;
-	nameBN: string;
-	slug: string;
-}
-
-interface Brand {
-	_id: string;
-	name: string;
-	nameBN: string;
-	slug: string;
-}
-
-type CategoriesResult = { success: boolean; categories?: Category[] };
-type BrandsResult = { success: boolean; brands?: Brand[] };
+type CategoriesResult = { success: boolean; categories?: ICategory[] };
+type BrandsResult = { success: boolean; brands?: IBrand[] };
 type CreateCategoryRes = { success: boolean; category?: { _id: string }; error?: string };
 type CreateBrandRes = { success: boolean; brand?: { _id: string }; error?: string };
 
-const initialMenuState = {
-	name: "",
-	nameBN: "",
-	description: "",
-	descriptionBN: "",
-	imageFile: null as File | null,
+// =============== we extend server schema to accept boolean flags client-side ================
+const clientProductSchema = productSchema.extend({
+	isActive: z.boolean().optional(),
+	isFeatured: z.boolean().optional(),
+});
+type ProductFormValues = z.infer<typeof clientProductSchema>;
+
+type FormState = {
+	message: string;
+	fieldErrors: Record<string, string | undefined>;
 };
 
 const getInitialFormValues = (product: IProduct) => {
@@ -56,10 +55,10 @@ const getInitialFormValues = (product: IProduct) => {
 		titleBN: product?.titleBN || "",
 		description: product?.description || "",
 		descriptionBN: product?.descriptionBN || "",
-		unit: product?.unit || "pcs",
+		unit: (product?.unit as ProductUnit) || "pcs",
 		stock: product?.stock || 0,
 		price: product?.price || 0,
-		salePrice: product?.salePrice !== undefined ? String(product.salePrice) : "",
+		salePrice: product?.salePrice ?? undefined,
 		highlights: product?.highlights || "",
 		highlightsBN: product?.highlightsBN || "",
 		specification: product?.specification || "",
@@ -68,7 +67,7 @@ const getInitialFormValues = (product: IProduct) => {
 		brand: product?.brand?._id ? String(product.brand._id) : "",
 		sku: product?.sku || "",
 		barcode: product?.barcode || "",
-		weight: (product?.weight as unknown as string) || "",
+		weight: (product?.weight as number | undefined) ?? undefined,
 		warranty: product?.warranty || "",
 		warrantyBN: product?.warrantyBN || "",
 		tags: product?.tags?.join(", ") || "",
@@ -78,16 +77,82 @@ const getInitialFormValues = (product: IProduct) => {
 };
 
 export default function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
-	const [loading, setLoading] = useState(false);
-	const [categories, setCategories] = useState<Category[]>([]);
-	const [brands, setBrands] = useState<Brand[]>([]);
-	const [formData, setFormData] = useState(() => getInitialFormValues(product as IProduct));
+	const [categories, setCategories] = useState<ICategory[]>([]);
+	const [brands, setBrands] = useState<IBrand[]>([]);
 	const [images, setImages] = useState<File[]>([]);
 	const [previewImages, setPreviewImages] = useState<string[]>(product?.gallery || []);
 	const [categorySheetOpen, setCategorySheetOpen] = useState(false);
 	const [brandSheetOpen, setBrandSheetOpen] = useState(false);
-	const [quickCategory, setQuickCategory] = useState(initialMenuState);
-	const [quickBrand, setQuickBrand] = useState(initialMenuState);
+	const [quickCategoryImage, setQuickCategoryImage] = useState<File | null>(null);
+	const [quickBrandImage, setQuickBrandImage] = useState<File | null>(null);
+
+	// =============== sheet forms ================
+	const categoryForm = useForm<QuickCategoryValues>({
+		resolver: zodResolver(quickCategorySchema),
+		defaultValues: { name: "", nameBN: "", description: "", descriptionBN: "" },
+	});
+	const brandForm = useForm<QuickBrandValues>({
+		resolver: zodResolver(quickBrandSchema),
+		defaultValues: { name: "", nameBN: "", description: "", descriptionBN: "" },
+	});
+
+	// =============== useActionState to handle submission and errors ================
+	async function handleFormAction(formData: FormData): Promise<FormState> {
+		try {
+			// build raw values from form data for validation
+			const raw = Object.fromEntries(formData);
+			raw.isActive = raw.isActive ?? (raw.isActive ? "true" : "false");
+			raw.isFeatured = raw.isFeatured ?? (raw.isFeatured ? "true" : "false");
+
+			const validated = productSchema.safeParse(raw);
+
+			if (!validated.success) {
+				const fieldErrors: Record<string, string | undefined> = {};
+				const flat = validated.error.flatten().fieldErrors;
+				for (const key in flat) {
+					const first = (flat as Record<string, string[]>)[key]?.[0];
+					if (first) fieldErrors[key] = first;
+				}
+
+				toast("Form validation failed", {
+					classNames: {
+						title: "!text-red-500",
+						cancelButton: "!bg-red-500 !text-white",
+					},
+					description: "please fix the highlighted errors",
+					position: "top-center",
+					cancel: {
+						label: "Close",
+						onClick: () => console.log("Close"),
+					},
+				});
+
+				return { message: "please fix the highlighted errors", fieldErrors };
+			}
+
+			// include existing images that were not removed
+			previewImages
+				.filter((img) => img.startsWith("http"))
+				.forEach((url) => formData.append("existingImages", url));
+
+			const result = await onSubmit(formData);
+			if (!result.success) {
+				return { message: result.error || "failed to save product", fieldErrors: {} };
+			}
+			return { message: "", fieldErrors: {} };
+		} catch (err) {
+			console.error(err);
+			return { message: "unexpected error occurred", fieldErrors: {} };
+		}
+	}
+
+	// =============== react-hook-form setup ================
+	const form = useForm<ProductFormValues, unknown, ProductFormValues>({
+		resolver: zodResolver(clientProductSchema) as unknown as import("react-hook-form").Resolver<ProductFormValues>,
+		defaultValues: {
+			...getInitialFormValues(product as IProduct),
+		},
+	});
 
 	// =============== fetch categories and brands ================
 	useEffect(() => {
@@ -116,23 +181,15 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 		fetchData();
 	}, []);
 
-	// =============== handle input change ================
-	const handleInputChange = <K extends keyof typeof formData>(field: K, value: (typeof formData)[K]) => {
-		setFormData((prev) => ({
-			...prev,
-			[field]: value,
-		}));
-	};
-
-	// =============== quick add category ================
-	const submitQuickCategory = async () => {
+	// =============== quick add category (validated) ================
+	const submitQuickCategory = async (values: QuickCategoryValues) => {
 		try {
 			const formData = new FormData();
-			formData.append("name", quickCategory.name);
-			formData.append("nameBN", quickCategory.nameBN);
-			formData.append("description", quickCategory.description);
-			formData.append("descriptionBN", quickCategory.descriptionBN);
-			if (quickCategory.imageFile) formData.append("image", quickCategory.imageFile);
+			Object.entries(values).forEach(([key, value]) => {
+				if (value) formData.append(key, value as string);
+			});
+			if (quickCategoryImage) formData.append("image", quickCategoryImage);
+
 			const res = (await createCategoryQuick(formData)) as unknown as CreateCategoryRes;
 			if (res.success) {
 				// refresh list and set selected
@@ -140,10 +197,11 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 				if (cats.success) {
 					setCategories(cats.categories ?? []);
 					const createdId = res.category?._id;
-					if (createdId) handleInputChange("category", createdId);
+					if (createdId) form.setValue("category", createdId);
 				}
 				setCategorySheetOpen(false);
-				setQuickCategory(initialMenuState);
+				categoryForm.reset();
+				setQuickCategoryImage(null);
 				toast.success("Category created");
 			} else {
 				toast.error(res.error || "Failed to create category");
@@ -154,15 +212,14 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 		}
 	};
 
-	// =============== quick add brand ================
-	const submitQuickBrand = async () => {
+	// =============== quick add brand (validated) ================
+	const submitQuickBrand = async (values: QuickBrandValues) => {
 		try {
 			const formData = new FormData();
-			formData.append("name", quickBrand.name);
-			formData.append("nameBN", quickBrand.nameBN);
-			formData.append("description", quickBrand.description);
-			formData.append("descriptionBN", quickBrand.descriptionBN);
-			if (quickBrand.imageFile) formData.append("image", quickBrand.imageFile);
+			Object.entries(values).forEach(([key, value]) => {
+				if (value) formData.append(key, value as string);
+			});
+			if (quickBrandImage) formData.append("image", quickBrandImage);
 
 			const res = (await createBrandQuick(formData)) as unknown as CreateBrandRes;
 
@@ -171,10 +228,11 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 				if (brs.success) {
 					setBrands(brs.brands ?? []);
 					const createdId = res.brand?._id;
-					if (createdId) handleInputChange("brand", createdId);
+					if (createdId) form.setValue("brand", createdId);
 				}
 				setBrandSheetOpen(false);
-				setQuickBrand(initialMenuState);
+				brandForm.reset();
+				setQuickBrandImage(null);
 				toast.success("Brand created");
 			} else {
 				toast.error(res.error || "Failed to create brand");
@@ -207,414 +265,542 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 		setPreviewImages((prev) => prev.filter((img) => img !== imageUrl));
 	};
 
-	// =============== handle form submission ================
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		setLoading(true);
-
-		try {
-			const formDataObj = new FormData();
-
-			Object.entries(formData).forEach(([key, value]) => {
-				if (value !== undefined && value !== "") {
-					formDataObj.append(key, value as string);
-				}
-			});
-
-			// Add images
-			images.forEach((image) => {
-				formDataObj.append("images", image);
-			});
-
-			// Add existing images that weren't removed
-			previewImages.forEach((imageUrl) => {
-				if (imageUrl.startsWith("http")) {
-					formDataObj.append("existingImages", imageUrl);
-				}
-			});
-
-			const result = await onSubmit(formDataObj);
-
-			if (result.success) {
-				toast.success(product ? "Product updated successfully!" : "Product created successfully!");
-				onCancel();
-			} else {
-				console.error("Failed to save product", result);
-				toast.error(result.error || "Failed to save product");
-			}
-		} catch (error) {
-			console.error(error);
-			toast.error("An error occurred while saving the product");
-		} finally {
-			setLoading(false);
-		}
-	};
-
 	// =============== generate SKU ================
 	const generateSku = () => {
 		const timestamp = Date.now().toString().slice(-6);
 		const random = Math.random().toString(36).substring(2, 5).toUpperCase();
 		const sku = `SKU-${timestamp}-${random}`;
-		setFormData((prev) => ({ ...prev, sku }));
+		form.setValue("sku", sku);
+	};
+
+	// =============== rhf submit handler: builds FormData and delegates to useActionState ================
+	const onSubmitRHF = async (values: ProductFormValues) => {
+		try {
+			const fd = new FormData();
+			Object.entries(values as Record<string, unknown>).forEach(([key, val]) => {
+				if (val === undefined || val === null) return;
+				if (typeof val === "boolean") {
+					fd.append(key, val ? "true" : "false");
+				} else {
+					fd.append(key, String(val));
+				}
+			});
+
+			// include existing images that were not removed
+			previewImages.filter((img) => img.startsWith("http")).forEach((url) => fd.append("existingImages", url));
+
+			// append newly selected images
+			images.forEach((file) => fd.append("images", file));
+
+			await handleFormAction(fd);
+		} catch (e) {
+			console.error(e);
+			toast.error("failed to submit form");
+		}
 	};
 
 	return (
-		<form onSubmit={handleSubmit} className="space-y-6">
-			<Card>
-				<CardHeader>
-					<CardTitle>Basic Information</CardTitle>
-					<CardDescription>Essential product details</CardDescription>
-				</CardHeader>
-				<CardContent className="space-y-4">
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-						<div className="space-y-2">
-							<Label htmlFor="title">Product Title (English) *</Label>
-							<Input
-								id="title"
-								value={formData.title}
-								onChange={(e) => handleInputChange("title", e.target.value)}
-								required
-								placeholder="Enter product title"
+		<Form {...form}>
+			<form onSubmit={form.handleSubmit(onSubmitRHF)} className="space-y-6" noValidate>
+				<Card>
+					<CardHeader>
+						<CardTitle>Basic Information</CardTitle>
+						<CardDescription>Essential product details</CardDescription>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<FormField
+								control={form.control}
+								name={"title"}
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Product Title (English) *</FormLabel>
+										<FormControl>
+											<Input placeholder="Enter product title" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name={"titleBN"}
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Product Title (Bengali) *</FormLabel>
+										<FormControl>
+											<Input placeholder="Enter product title in Bengali" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
 							/>
 						</div>
-						<div className="space-y-2">
-							<Label htmlFor="titleBN">Product Title (Bengali) *</Label>
-							<Input
-								id="titleBN"
-								value={formData.titleBN}
-								onChange={(e) => handleInputChange("titleBN", e.target.value)}
-								required
-								placeholder="Enter product title in Bengali"
+
+						<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+							<FormField
+								control={form.control}
+								name={"category"}
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Category *</FormLabel>
+										<div className="flex gap-2">
+											<div className="flex-1">
+												<Select value={field.value as string} onValueChange={field.onChange}>
+													<SelectTrigger className="w-full">
+														<SelectValue placeholder="Select category" />
+													</SelectTrigger>
+													<SelectContent>
+														{categories.map((category, index) => (
+															<SelectItem
+																key={(category._id as string) || index}
+																value={category._id as string}
+															>
+																{category.name}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+											</div>
+											<Button
+												type="button"
+												variant="outline"
+												onClick={() => setCategorySheetOpen(true)}
+											>
+												<Plus className="h-4 w-4" />
+											</Button>
+										</div>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name={"brand"}
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Brand *</FormLabel>
+										<div className="flex gap-2">
+											<div className="flex-1">
+												<Select value={field.value as string} onValueChange={field.onChange}>
+													<SelectTrigger className="w-full">
+														<SelectValue placeholder="Select brand" />
+													</SelectTrigger>
+													<SelectContent>
+														{brands.map((brand) => (
+															<SelectItem
+																key={brand._id as string}
+																value={brand._id as string}
+															>
+																{brand.name}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+											</div>
+											<Button
+												type="button"
+												variant="outline"
+												onClick={() => setBrandSheetOpen(true)}
+											>
+												<Plus className="h-4 w-4" />
+											</Button>
+										</div>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name={"unit"}
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Unit *</FormLabel>
+										<Select
+											value={field.value as string}
+											onValueChange={(v) => field.onChange(v as ProductUnit)}
+										>
+											<SelectTrigger className="w-full">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												{UNITS.map((unit) => (
+													<SelectItem key={unit.id} value={unit.value}>
+														{unit.label}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										<FormMessage />
+									</FormItem>
+								)}
 							/>
 						</div>
-					</div>
 
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-						<div className="space-y-2">
-							<Label htmlFor="category">Category *</Label>
-							<div className="flex gap-2">
-								<div className="flex-1">
-									<Select
-										value={formData.category}
-										onValueChange={(value) => handleInputChange("category", value)}
-										required
-									>
-										<SelectTrigger className="w-full">
-											<SelectValue placeholder="Select category" />
-										</SelectTrigger>
-										<SelectContent>
-											{categories.map((category) => (
-												<SelectItem key={category._id} value={category._id}>
-													{category.name}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</div>
-								<Button type="button" variant="outline" onClick={() => setCategorySheetOpen(true)}>
-									<Plus className="h-4 w-4" />
-								</Button>
-							</div>
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<FormField
+								control={form.control}
+								name={"sku"}
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>SKU *</FormLabel>
+										<div className="flex gap-2">
+											<FormControl>
+												<Input placeholder="Enter SKU" {...field} />
+											</FormControl>
+											<Button
+												type="button"
+												variant="outline"
+												onClick={generateSku}
+												className="whitespace-nowrap"
+											>
+												Generate
+											</Button>
+										</div>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name={"barcode"}
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Barcode</FormLabel>
+										<FormControl>
+											<Input placeholder="Enter barcode (optional)" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
 						</div>
-						<div className="space-y-2">
-							<Label htmlFor="brand">Brand *</Label>
-							<div className="flex gap-2">
-								<div className="flex-1">
-									<Select
-										value={formData.brand}
-										onValueChange={(value) => handleInputChange("brand", value)}
-										required
-									>
-										<SelectTrigger className="w-full">
-											<SelectValue placeholder="Select brand" />
-										</SelectTrigger>
-										<SelectContent>
-											{brands.map((brand) => (
-												<SelectItem key={brand._id} value={brand._id}>
-													{brand.name}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</div>
-								<Button type="button" variant="outline" onClick={() => setBrandSheetOpen(true)}>
-									<Plus className="h-4 w-4" />
-								</Button>
-							</div>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="unit">Unit *</Label>
-							<Select
-								value={formData.unit}
-								onValueChange={(value) => handleInputChange("unit", value as ProductUnit)}
-								required
-							>
-								<SelectTrigger className="w-full">
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									{UNITS.map((unit) => (
-										<SelectItem key={unit.id} value={unit.value}>
-											{unit.label}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
-					</div>
+					</CardContent>
+				</Card>
 
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+				{/* Pricing & Stock */}
+				<Card>
+					<CardHeader>
+						<CardTitle>Pricing & Stock</CardTitle>
+						<CardDescription>Product pricing and inventory information</CardDescription>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+							<FormField
+								control={form.control}
+								name={"price"}
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Regular Price (৳) *</FormLabel>
+										<FormControl>
+											<Input
+												id="price"
+												type="number"
+												min="0"
+												step="0.01"
+												placeholder="0.00"
+												value={field.value as number}
+												onChange={(e) =>
+													field.onChange(e.target.value === "" ? 0 : Number(e.target.value))
+												}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name={"salePrice"}
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Sale Price (৳)</FormLabel>
+										<FormControl>
+											<Input
+												id="salePrice"
+												type="number"
+												min="0"
+												step="0.01"
+												placeholder="0.00 (optional)"
+												value={(field.value as number | undefined) ?? ""}
+												onChange={(e) =>
+													field.onChange(
+														e.target.value === "" ? undefined : Number(e.target.value)
+													)
+												}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name={"stock"}
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Stock Quantity *</FormLabel>
+										<FormControl>
+											<Input
+												id="stock"
+												type="number"
+												min="0"
+												placeholder="0"
+												value={field.value as number}
+												onChange={(e) =>
+													field.onChange(e.target.value === "" ? 0 : Number(e.target.value))
+												}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
+
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<FormField
+								control={form.control}
+								name={"weight"}
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Weight (kg)</FormLabel>
+										<FormControl>
+											<Input
+												id="weight"
+												type="number"
+												min="0"
+												step="0.01"
+												placeholder="0.00 (optional)"
+												value={(field.value as number | undefined) ?? ""}
+												onChange={(e) =>
+													field.onChange(
+														e.target.value === "" ? undefined : Number(e.target.value)
+													)
+												}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name={"tags"}
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Tags</FormLabel>
+										<FormControl>
+											<Input id="tags" placeholder="Enter tags separated by commas" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
+					</CardContent>
+				</Card>
+
+				{/* Descriptions */}
+				<Card>
+					<CardHeader>
+						<CardTitle>Product Descriptions</CardTitle>
+						<CardDescription>Detailed product information in multiple languages</CardDescription>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<FormField
+								control={form.control}
+								name={"description"}
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Description (English) *</FormLabel>
+										<FormControl>
+											<Textarea rows={4} placeholder="Enter product description" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name={"descriptionBN"}
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Description (Bengali) *</FormLabel>
+										<FormControl>
+											<Textarea
+												rows={4}
+												placeholder="Enter product description in Bengali"
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
+
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<FormField
+								control={form.control}
+								name={"highlights"}
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Highlights (English) *</FormLabel>
+										<FormControl>
+											<Textarea rows={3} placeholder="Enter product highlights" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name={"highlightsBN"}
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Highlights (Bengali) *</FormLabel>
+										<FormControl>
+											<Textarea
+												rows={3}
+												placeholder="Enter product highlights in Bengali"
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
+
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<FormField
+								control={form.control}
+								name={"specification"}
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Specifications (English) *</FormLabel>
+										<FormControl>
+											<Textarea rows={4} placeholder="Enter product specifications" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name={"specificationBN"}
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Specifications (Bengali) *</FormLabel>
+										<FormControl>
+											<Textarea
+												rows={4}
+												placeholder="Enter product specifications in Bengali"
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
+
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<FormField
+								control={form.control}
+								name={"warranty"}
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Warranty (English)</FormLabel>
+										<FormControl>
+											<Input placeholder="Enter warranty information" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name={"warrantyBN"}
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Warranty (Bengali)</FormLabel>
+										<FormControl>
+											<Input placeholder="Enter warranty information in Bengali" {...field} />
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
+					</CardContent>
+				</Card>
+
+				{/* Product Images */}
+				<Card>
+					<CardHeader>
+						<CardTitle>Product Images</CardTitle>
+						<CardDescription>Upload product images (at least one required)</CardDescription>
+					</CardHeader>
+					<CardContent className="space-y-4">
 						<div className="space-y-2">
-							<Label htmlFor="sku">SKU *</Label>
-							<div className="flex gap-2">
+							<Label htmlFor="images">Upload Images</Label>
+							<div className="flex items-center gap-2">
 								<Input
-									id="sku"
-									value={formData.sku}
-									onChange={(e) => handleInputChange("sku", e.target.value)}
-									required
-									placeholder="Enter SKU"
+									id="images"
+									type="file"
+									accept="image/*"
+									multiple
+									name="images"
+									onChange={handleImageSelect}
+									className="flex-1"
 								/>
-								<Button
-									type="button"
-									variant="outline"
-									onClick={generateSku}
-									className="whitespace-nowrap"
-								>
-									Generate
+								<Button type="button" variant="outline" size="icon">
+									<ImageIcon className="h-4 w-4" />
 								</Button>
 							</div>
+							<p className="text-sm text-muted-foreground">
+								Upload high-quality images to showcase your product
+							</p>
 						</div>
-						<div className="space-y-2">
-							<Label htmlFor="barcode">Barcode</Label>
-							<Input
-								id="barcode"
-								value={formData.barcode}
-								onChange={(e) => handleInputChange("barcode", e.target.value)}
-								placeholder="Enter barcode (optional)"
-							/>
-						</div>
-					</div>
-				</CardContent>
-			</Card>
 
-			{/* Pricing & Stock */}
-			<Card>
-				<CardHeader>
-					<CardTitle>Pricing & Stock</CardTitle>
-					<CardDescription>Product pricing and inventory information</CardDescription>
-				</CardHeader>
-				<CardContent className="space-y-4">
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-						<div className="space-y-2">
-							<Label htmlFor="price">Regular Price (৳) *</Label>
-							<Input
-								id="price"
-								type="number"
-								value={formData.price}
-								onChange={(e) => handleInputChange("price", parseFloat(e.target.value) || 0)}
-								required
-								min="0"
-								step="0.01"
-								placeholder="0.00"
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="salePrice">Sale Price (৳)</Label>
-							<Input
-								id="salePrice"
-								type="number"
-								value={formData.salePrice}
-								onChange={(e) => handleInputChange("salePrice", e.target.value)}
-								min="0"
-								step="0.01"
-								placeholder="0.00 (optional)"
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="stock">Stock Quantity *</Label>
-							<Input
-								id="stock"
-								type="number"
-								value={formData.stock}
-								onChange={(e) => handleInputChange("stock", parseInt(e.target.value) || 0)}
-								required
-								min="0"
-								placeholder="0"
-							/>
-						</div>
-					</div>
+						{/* Image Previews */}
+						{(previewImages.length > 0 || images.length > 0) && (
+							<div className="space-y-3">
+								<Label>Product Images</Label>
+								<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+									{/* Existing images */}
+									{previewImages
+										.filter((img) => img.startsWith("http"))
+										.map((imageUrl, index) => (
+											<div key={`existing-${index}`} className="relative group">
+												<Image
+													src={imageUrl}
+													alt={`Product image ${index + 1}`}
+													width={200}
+													height={200}
+													className="w-full h-32 object-cover rounded-lg"
+												/>
+												<Button
+													type="button"
+													variant="destructive"
+													size="sm"
+													className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+													onClick={() => removeExistingImage(imageUrl)}
+												>
+													<Trash2 className="h-4 w-4" />
+												</Button>
+											</div>
+										))}
 
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-						<div className="space-y-2">
-							<Label htmlFor="weight">Weight (kg)</Label>
-							<Input
-								id="weight"
-								type="number"
-								value={formData.weight}
-								onChange={(e) => handleInputChange("weight", e.target.value)}
-								min="0"
-								step="0.01"
-								placeholder="0.00 (optional)"
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="tags">Tags</Label>
-							<Input
-								id="tags"
-								value={formData.tags}
-								onChange={(e) => handleInputChange("tags", e.target.value)}
-								placeholder="Enter tags separated by commas"
-							/>
-						</div>
-					</div>
-				</CardContent>
-			</Card>
-
-			{/* Descriptions */}
-			<Card>
-				<CardHeader>
-					<CardTitle>Product Descriptions</CardTitle>
-					<CardDescription>Detailed product information in multiple languages</CardDescription>
-				</CardHeader>
-				<CardContent className="space-y-4">
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-						<div className="space-y-2">
-							<Label htmlFor="description">Description (English) *</Label>
-							<Textarea
-								id="description"
-								value={formData.description}
-								onChange={(e) => handleInputChange("description", e.target.value)}
-								required
-								rows={4}
-								placeholder="Enter product description"
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="descriptionBN">Description (Bengali) *</Label>
-							<Textarea
-								id="descriptionBN"
-								value={formData.descriptionBN}
-								onChange={(e) => handleInputChange("descriptionBN", e.target.value)}
-								required
-								rows={4}
-								placeholder="Enter product description in Bengali"
-							/>
-						</div>
-					</div>
-
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-						<div className="space-y-2">
-							<Label htmlFor="highlights">Highlights (English) *</Label>
-							<Textarea
-								id="highlights"
-								value={formData.highlights}
-								onChange={(e) => handleInputChange("highlights", e.target.value)}
-								required
-								rows={3}
-								placeholder="Enter product highlights"
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="highlightsBN">Highlights (Bengali) *</Label>
-							<Textarea
-								id="highlightsBN"
-								value={formData.highlightsBN}
-								onChange={(e) => handleInputChange("highlightsBN", e.target.value)}
-								required
-								rows={3}
-								placeholder="Enter product highlights in Bengali"
-							/>
-						</div>
-					</div>
-
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-						<div className="space-y-2">
-							<Label htmlFor="specification">Specifications (English) *</Label>
-							<Textarea
-								id="specification"
-								value={formData.specification}
-								onChange={(e) => handleInputChange("specification", e.target.value)}
-								required
-								rows={4}
-								placeholder="Enter product specifications"
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="specificationBN">Specifications (Bengali) *</Label>
-							<Textarea
-								id="specificationBN"
-								value={formData.specificationBN}
-								onChange={(e) => handleInputChange("specificationBN", e.target.value)}
-								required
-								rows={4}
-								placeholder="Enter product specifications in Bengali"
-							/>
-						</div>
-					</div>
-
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-						<div className="space-y-2">
-							<Label htmlFor="warranty">Warranty (English)</Label>
-							<Input
-								id="warranty"
-								value={formData.warranty}
-								onChange={(e) => handleInputChange("warranty", e.target.value)}
-								placeholder="Enter warranty information"
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="warrantyBN">Warranty (Bengali)</Label>
-							<Input
-								id="warrantyBN"
-								value={formData.warrantyBN}
-								onChange={(e) => handleInputChange("warrantyBN", e.target.value)}
-								placeholder="Enter warranty information in Bengali"
-							/>
-						</div>
-					</div>
-				</CardContent>
-			</Card>
-
-			{/* Product Images */}
-			<Card>
-				<CardHeader>
-					<CardTitle>Product Images</CardTitle>
-					<CardDescription>Upload product images (at least one required)</CardDescription>
-				</CardHeader>
-				<CardContent className="space-y-4">
-					<div className="space-y-2">
-						<Label htmlFor="images">Upload Images</Label>
-						<div className="flex items-center gap-2">
-							<Input
-								id="images"
-								type="file"
-								accept="image/*"
-								multiple
-								onChange={handleImageSelect}
-								className="flex-1"
-							/>
-							<Button type="button" variant="outline" size="icon">
-								<ImageIcon className="h-4 w-4" />
-							</Button>
-						</div>
-						<p className="text-sm text-muted-foreground">
-							Upload high-quality images to showcase your product
-						</p>
-					</div>
-
-					{/* Image Previews */}
-					{(previewImages.length > 0 || images.length > 0) && (
-						<div className="space-y-3">
-							<Label>Product Images</Label>
-							<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-								{/* Existing images */}
-								{previewImages
-									.filter((img) => img.startsWith("http"))
-									.map((imageUrl, index) => (
-										<div key={`existing-${index}`} className="relative group">
+									{/* New images */}
+									{images.map((_, index) => (
+										<div key={`new-${index}`} className="relative group">
 											<Image
-												src={imageUrl}
-												alt={`Product image ${index + 1}`}
+												src={previewImages[previewImages.length - images.length + index]}
+												alt={`New image ${index + 1}`}
 												width={200}
 												height={200}
 												className="w-full h-32 object-cover rounded-lg"
@@ -624,171 +810,242 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 												variant="destructive"
 												size="sm"
 												className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-												onClick={() => removeExistingImage(imageUrl)}
+												onClick={() => removeImage(index)}
 											>
-												<Trash2 className="h-4 w-4" />
+												<X className="h-4 w-4" />
 											</Button>
 										</div>
 									))}
-
-								{/* New images */}
-								{images.map((_, index) => (
-									<div key={`new-${index}`} className="relative group">
-										<Image
-											src={previewImages[previewImages.length - images.length + index]}
-											alt={`New image ${index + 1}`}
-											width={200}
-											height={200}
-											className="w-full h-32 object-cover rounded-lg"
-										/>
-										<Button
-											type="button"
-											variant="destructive"
-											size="sm"
-											className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-											onClick={() => removeImage(index)}
-										>
-											<X className="h-4 w-4" />
-										</Button>
-									</div>
-								))}
+								</div>
 							</div>
-						</div>
-					)}
-				</CardContent>
-			</Card>
+						)}
+					</CardContent>
+				</Card>
 
-			{/* Product Status */}
-			<Card>
-				<CardHeader>
-					<CardTitle>Product Status</CardTitle>
-					<CardDescription>Control product visibility and features</CardDescription>
-				</CardHeader>
-				<CardContent className="space-y-4">
-					<div className="flex items-center space-x-2">
-						<Checkbox
-							id="isActive"
-							checked={formData.isActive}
-							onCheckedChange={(checked) => handleInputChange("isActive", Boolean(checked))}
+				{/* Product Status */}
+				<Card>
+					<CardHeader>
+						<CardTitle>Product Status</CardTitle>
+						<CardDescription>Control product visibility and features</CardDescription>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						<FormField
+							control={form.control}
+							name={"isActive"}
+							render={({ field }) => (
+								<FormItem className="flex flex-row items-center space-x-2 space-y-0">
+									<FormControl>
+										<Checkbox
+											id="isActive"
+											checked={Boolean(field.value)}
+											onCheckedChange={(v) => field.onChange(Boolean(v))}
+										/>
+									</FormControl>
+									<FormLabel htmlFor="isActive" className="!mb-0">
+										Active (visible to customers)
+									</FormLabel>
+									<FormMessage />
+								</FormItem>
+							)}
 						/>
-						<Label htmlFor="isActive">Active (visible to customers)</Label>
-					</div>
-					<div className="flex items-center space-x-2">
-						<Checkbox
-							id="isFeatured"
-							checked={formData.isFeatured}
-							onCheckedChange={(checked) => handleInputChange("isFeatured", Boolean(checked))}
+						<FormField
+							control={form.control}
+							name={"isFeatured"}
+							render={({ field }) => (
+								<FormItem className="flex flex-row items-center space-x-2 space-y-0">
+									<FormControl>
+										<Checkbox
+											id="isFeatured"
+											checked={Boolean(field.value)}
+											onCheckedChange={(v) => field.onChange(Boolean(v))}
+										/>
+									</FormControl>
+									<FormLabel htmlFor="isFeatured" className="!mb-0">
+										Featured (highlighted on homepage)
+									</FormLabel>
+									<FormMessage />
+								</FormItem>
+							)}
 						/>
-						<Label htmlFor="isFeatured">Featured (highlighted on homepage)</Label>
-					</div>
-				</CardContent>
-			</Card>
+					</CardContent>
+				</Card>
 
-			{/* Form Actions */}
-			<div className="flex justify-end gap-4">
-				<Button type="button" variant="outline" onClick={onCancel}>
-					Cancel
-				</Button>
-				<Button type="submit" disabled={loading}>
-					{loading ? (
-						<>
-							<Loader2 className="h-4 w-4 mr-2 animate-spin" />
-							Saving...
-						</>
-					) : (
-						<>
-							{product ? <Pencil className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-							{product ? "Update Product" : "Create Product"}
-						</>
-					)}
-				</Button>
-			</div>
+				{/* Form Actions */}
+				<div className="flex justify-end gap-4">
+					<Button type="button" variant="outline" onClick={onCancel}>
+						Cancel
+					</Button>
+					<Button type="submit" disabled={form.formState.isSubmitting}>
+						{form.formState.isSubmitting ? (
+							<>
+								<Loader2 className="h-4 w-4 mr-2 animate-spin" />
+								Saving...
+							</>
+						) : (
+							<>
+								{product ? <Pencil className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+								{product ? "Update Product" : "Create Product"}
+							</>
+						)}
+					</Button>
+				</div>
 
-			{/* =============== quick create category sheet ================ */}
-			<Sheet open={categorySheetOpen} onOpenChange={setCategorySheetOpen}>
-				<SheetContent side="right">
-					<SheetHeader>
-						<SheetTitle>Create Category</SheetTitle>
-					</SheetHeader>
-					<div className="space-y-3 p-4">
-						<Label>Name</Label>
-						<Input
-							value={quickCategory.name}
-							onChange={(e) => setQuickCategory({ ...quickCategory, name: e.target.value })}
-						/>
-						<Label>Name (BN)</Label>
-						<Input
-							value={quickCategory.nameBN}
-							onChange={(e) => setQuickCategory({ ...quickCategory, nameBN: e.target.value })}
-						/>
-						<Label>Description</Label>
-						<Textarea
-							value={quickCategory.description}
-							onChange={(e) => setQuickCategory({ ...quickCategory, description: e.target.value })}
-						/>
-						<Label>Description (BN)</Label>
-						<Textarea
-							value={quickCategory.descriptionBN}
-							onChange={(e) => setQuickCategory({ ...quickCategory, descriptionBN: e.target.value })}
-						/>
-						<Label>Image</Label>
-						<Input
-							type="file"
-							accept="image/*"
-							onChange={(e) =>
-								setQuickCategory({ ...quickCategory, imageFile: e.target.files?.[0] || null })
-							}
-						/>
-						<div className="flex justify-end">
-							<Button type="button" onClick={submitQuickCategory}>
-								Save
-							</Button>
-						</div>
-					</div>
-				</SheetContent>
-			</Sheet>
+				{/* =============== quick create category sheet ================ */}
+				<Sheet open={categorySheetOpen} onOpenChange={setCategorySheetOpen}>
+					<SheetContent side="right">
+						<SheetHeader>
+							<SheetTitle>Create Category</SheetTitle>
+						</SheetHeader>
+						<Form {...categoryForm}>
+							<form onSubmit={categoryForm.handleSubmit(submitQuickCategory)} className="space-y-3 p-4">
+								<FormField
+									control={categoryForm.control}
+									name={"name"}
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Name</FormLabel>
+											<FormControl>
+												<Input {...field} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={categoryForm.control}
+									name={"nameBN"}
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Name (BN)</FormLabel>
+											<FormControl>
+												<Input {...field} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={categoryForm.control}
+									name={"description"}
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Description</FormLabel>
+											<FormControl>
+												<Textarea {...field} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={categoryForm.control}
+									name={"descriptionBN"}
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Description (BN)</FormLabel>
+											<FormControl>
+												<Textarea {...field} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<div>
+									<Label>Image</Label>
+									<Input
+										type="file"
+										accept="image/*"
+										onChange={(e) => setQuickCategoryImage(e.target.files?.[0] || null)}
+									/>
+								</div>
+								<div className="flex justify-end">
+									<Button type="submit" disabled={categoryForm.formState.isSubmitting}>
+										Save
+									</Button>
+								</div>
+							</form>
+						</Form>
+					</SheetContent>
+				</Sheet>
 
-			{/* =============== quick create brand sheet ================ */}
-			<Sheet open={brandSheetOpen} onOpenChange={setBrandSheetOpen}>
-				<SheetContent side="right">
-					<SheetHeader>
-						<SheetTitle>Create Brand</SheetTitle>
-					</SheetHeader>
-					<div className="space-y-3 p-4">
-						<Label>Name</Label>
-						<Input
-							value={quickBrand.name}
-							onChange={(e) => setQuickBrand({ ...quickBrand, name: e.target.value })}
-						/>
-						<Label>Name (BN)</Label>
-						<Input
-							value={quickBrand.nameBN}
-							onChange={(e) => setQuickBrand({ ...quickBrand, nameBN: e.target.value })}
-						/>
-						<Label>Description</Label>
-						<Textarea
-							value={quickBrand.description}
-							onChange={(e) => setQuickBrand({ ...quickBrand, description: e.target.value })}
-						/>
-						<Label>Description (BN)</Label>
-						<Textarea
-							value={quickBrand.descriptionBN}
-							onChange={(e) => setQuickBrand({ ...quickBrand, descriptionBN: e.target.value })}
-						/>
-						<Label>Image</Label>
-						<Input
-							type="file"
-							accept="image/*"
-							onChange={(e) => setQuickBrand({ ...quickBrand, imageFile: e.target.files?.[0] || null })}
-						/>
-						<div className="flex justify-end">
-							<Button type="button" onClick={submitQuickBrand}>
-								Save
-							</Button>
-						</div>
-					</div>
-				</SheetContent>
-			</Sheet>
-		</form>
+				{/* =============== quick create brand sheet ================ */}
+				<Sheet open={brandSheetOpen} onOpenChange={setBrandSheetOpen}>
+					<SheetContent side="right">
+						<SheetHeader>
+							<SheetTitle>Create Brand</SheetTitle>
+						</SheetHeader>
+						<Form {...brandForm}>
+							<form onSubmit={brandForm.handleSubmit(submitQuickBrand)} className="space-y-3 p-4">
+								<FormField
+									control={brandForm.control}
+									name={"name"}
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Name</FormLabel>
+											<FormControl>
+												<Input {...field} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={brandForm.control}
+									name={"nameBN"}
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Name (BN)</FormLabel>
+											<FormControl>
+												<Input {...field} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={brandForm.control}
+									name={"description"}
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Description</FormLabel>
+											<FormControl>
+												<Textarea {...field} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={brandForm.control}
+									name={"descriptionBN"}
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Description (BN)</FormLabel>
+											<FormControl>
+												<Textarea {...field} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<div>
+									<Label>Image</Label>
+									<Input
+										type="file"
+										accept="image/*"
+										onChange={(e) => setQuickBrandImage(e.target.files?.[0] || null)}
+									/>
+								</div>
+								<div className="flex justify-end">
+									<Button type="submit" disabled={brandForm.formState.isSubmitting}>
+										Save
+									</Button>
+								</div>
+							</form>
+						</Form>
+					</SheetContent>
+				</Sheet>
+			</form>
+		</Form>
 	);
 }
