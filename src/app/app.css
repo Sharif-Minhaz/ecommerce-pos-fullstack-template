@@ -1,0 +1,17 @@
+/* FormMessage component overwrite */
+div[data-slot="form-item"] {
+	position: relative;
+
+	p[data-slot="form-message"] {
+		position: absolute;
+		top: -4px;
+		right: 0;
+		font-size: 0.875rem;
+		color: #fff;
+		background-color: #dc2626;
+		padding-inline: 10px;
+		padding-block: 2px;
+		border-radius: 5px;
+		width: fit-content;
+	}
+}

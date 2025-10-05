@@ -13,18 +13,17 @@ import { toast } from "sonner";
 import { Loader2, Plus, X, Image as ImageIcon, Trash2, Pencil } from "lucide-react";
 import Image from "next/image";
 import { IProduct, ProductUnit } from "@/types/product";
-import { getCategories, createCategoryQuick } from "@/app/actions/category";
-import { getBrands, createBrandQuick } from "@/app/actions/brand";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { getCategories } from "@/app/actions/category";
+import { getBrands } from "@/app/actions/brand";
 import { UNITS } from "@/constant";
 import { productSchema } from "@/schema/product-schema";
-import { quickCategorySchema, type QuickCategoryValues } from "@/schema/category-schema";
-import { quickBrandSchema, type QuickBrandValues } from "@/schema/brand-schema";
 import { IBrand } from "@/types/brand";
 import { ICategory } from "@/types/category";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import QuickBrandForm from "./QuickBrandForm";
+import QuickCategoryForm from "./QuickCategoryForm";
 
 interface ProductFormProps {
 	product?: IProduct;
@@ -32,21 +31,31 @@ interface ProductFormProps {
 	onCancel: () => void;
 }
 
-type CategoriesResult = { success: boolean; categories?: ICategory[] };
-type BrandsResult = { success: boolean; brands?: IBrand[] };
-type CreateCategoryRes = { success: boolean; category?: { _id: string }; error?: string };
-type CreateBrandRes = { success: boolean; brand?: { _id: string }; error?: string };
+export type BrandsResult = { success: boolean; brands?: IBrand[] };
+export type CategoriesResult = { success: boolean; categories?: ICategory[] };
 
 // =============== we extend server schema to accept boolean flags client-side ================
 const clientProductSchema = productSchema.extend({
 	isActive: z.boolean().optional(),
 	isFeatured: z.boolean().optional(),
 });
-type ProductFormValues = z.infer<typeof clientProductSchema>;
+
+export type ProductFormValues = z.infer<typeof clientProductSchema>;
 
 type FormState = {
 	message: string;
 	fieldErrors: Record<string, string | undefined>;
+};
+
+const generateBarcode = () => {
+	return `${Date.now().toString(36).toUpperCase()}`;
+};
+
+const generateSku = () => {
+	const timestamp = Date.now().toString().slice(-6);
+	const random = Math.random().toString(36).substring(2, 5).toUpperCase();
+	const sku = `SKU-${timestamp}-${random}`;
+	return sku;
 };
 
 const getInitialFormValues = (product: IProduct) => {
@@ -65,8 +74,8 @@ const getInitialFormValues = (product: IProduct) => {
 		specificationBN: product?.specificationBN || "",
 		category: product?.category?._id ? String(product.category._id) : "",
 		brand: product?.brand?._id ? String(product.brand._id) : "",
-		sku: product?.sku || "",
-		barcode: product?.barcode || "",
+		sku: product?.sku || generateSku(),
+		barcode: product?.barcode || generateBarcode(),
 		weight: (product?.weight as number | undefined) ?? undefined,
 		warranty: product?.warranty || "",
 		warrantyBN: product?.warrantyBN || "",
@@ -77,30 +86,25 @@ const getInitialFormValues = (product: IProduct) => {
 };
 
 export default function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
+	const form = useForm<ProductFormValues, unknown, ProductFormValues>({
+		resolver: zodResolver(clientProductSchema) as unknown as import("react-hook-form").Resolver<ProductFormValues>,
+		defaultValues: {
+			...getInitialFormValues(product as IProduct),
+		},
+	});
 	const [categories, setCategories] = useState<ICategory[]>([]);
 	const [brands, setBrands] = useState<IBrand[]>([]);
 	const [images, setImages] = useState<File[]>([]);
+
 	const [previewImages, setPreviewImages] = useState<string[]>(
 		Array.isArray(product?.gallery)
-			? (product!.gallery as unknown as Array<string | { url: string }>).map((g) =>
-					typeof g === "string" ? g : g.url
+			? (product!.gallery as unknown as Array<string | { url: string }>).map((gallery) =>
+					typeof gallery === "string" ? gallery : gallery.url
 			  )
 			: []
 	);
 	const [categorySheetOpen, setCategorySheetOpen] = useState(false);
 	const [brandSheetOpen, setBrandSheetOpen] = useState(false);
-	const [quickCategoryImage, setQuickCategoryImage] = useState<File | null>(null);
-	const [quickBrandImage, setQuickBrandImage] = useState<File | null>(null);
-
-	// =============== sheet forms ================
-	const categoryForm = useForm<QuickCategoryValues>({
-		resolver: zodResolver(quickCategorySchema),
-		defaultValues: { name: "", nameBN: "", description: "", descriptionBN: "" },
-	});
-	const brandForm = useForm<QuickBrandValues>({
-		resolver: zodResolver(quickBrandSchema),
-		defaultValues: { name: "", nameBN: "", description: "", descriptionBN: "" },
-	});
 
 	// =============== useActionState to handle submission and errors ================
 	async function handleFormAction(formData: FormData): Promise<FormState> {
@@ -115,6 +119,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 			if (!validated.success) {
 				const fieldErrors: Record<string, string | undefined> = {};
 				const flat = validated.error.flatten().fieldErrors;
+
 				for (const key in flat) {
 					const first = (flat as Record<string, string[]>)[key]?.[0];
 					if (first) fieldErrors[key] = first;
@@ -152,14 +157,6 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 		}
 	}
 
-	// =============== react-hook-form setup ================
-	const form = useForm<ProductFormValues, unknown, ProductFormValues>({
-		resolver: zodResolver(clientProductSchema) as unknown as import("react-hook-form").Resolver<ProductFormValues>,
-		defaultValues: {
-			...getInitialFormValues(product as IProduct),
-		},
-	});
-
 	// =============== fetch categories and brands ================
 	useEffect(() => {
 		const fetchData = async () => {
@@ -187,68 +184,6 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 		fetchData();
 	}, []);
 
-	// =============== quick add category (validated) ================
-	const submitQuickCategory = async (values: QuickCategoryValues) => {
-		try {
-			const formData = new FormData();
-			Object.entries(values).forEach(([key, value]) => {
-				if (value) formData.append(key, value as string);
-			});
-			if (quickCategoryImage) formData.append("image", quickCategoryImage);
-
-			const res = (await createCategoryQuick(formData)) as unknown as CreateCategoryRes;
-			if (res.success) {
-				// refresh list and set selected
-				const cats = (await getCategories()) as unknown as CategoriesResult;
-				if (cats.success) {
-					setCategories(cats.categories ?? []);
-					const createdId = res.category?._id;
-					if (createdId) form.setValue("category", createdId);
-				}
-				setCategorySheetOpen(false);
-				categoryForm.reset();
-				setQuickCategoryImage(null);
-				toast.success("Category created");
-			} else {
-				toast.error(res.error || "Failed to create category");
-			}
-		} catch (error) {
-			console.error(error);
-			toast.error("Failed to create category");
-		}
-	};
-
-	// =============== quick add brand (validated) ================
-	const submitQuickBrand = async (values: QuickBrandValues) => {
-		try {
-			const formData = new FormData();
-			Object.entries(values).forEach(([key, value]) => {
-				if (value) formData.append(key, value as string);
-			});
-			if (quickBrandImage) formData.append("image", quickBrandImage);
-
-			const res = (await createBrandQuick(formData)) as unknown as CreateBrandRes;
-
-			if (res.success) {
-				const brs = (await getBrands()) as unknown as BrandsResult;
-				if (brs.success) {
-					setBrands(brs.brands ?? []);
-					const createdId = res.brand?._id;
-					if (createdId) form.setValue("brand", createdId);
-				}
-				setBrandSheetOpen(false);
-				brandForm.reset();
-				setQuickBrandImage(null);
-				toast.success("Brand created");
-			} else {
-				toast.error(res.error || "Failed to create brand");
-			}
-		} catch (error) {
-			console.error(error);
-			toast.error("Failed to create brand");
-		}
-	};
-
 	// =============== handle image selection ================
 	const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const files = Array.from(e.target.files || []);
@@ -269,14 +204,6 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 	// =============== remove existing image ================
 	const removeExistingImage = (imageUrl: string) => {
 		setPreviewImages((prev) => prev.filter((img) => img !== imageUrl));
-	};
-
-	// =============== generate SKU ================
-	const generateSku = () => {
-		const timestamp = Date.now().toString().slice(-6);
-		const random = Math.random().toString(36).substring(2, 5).toUpperCase();
-		const sku = `SKU-${timestamp}-${random}`;
-		form.setValue("sku", sku);
 	};
 
 	// =============== rhf submit handler: builds FormData and delegates to useActionState ================
@@ -466,7 +393,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 												<Button
 													type="button"
 													variant="outline"
-													onClick={generateSku}
+													onClick={() => form.setValue("sku", generateSku())}
 													className="whitespace-nowrap"
 												>
 													Generate
@@ -482,9 +409,19 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 									render={({ field }) => (
 										<FormItem>
 											<FormLabel>Barcode</FormLabel>
-											<FormControl>
-												<Input placeholder="Enter barcode (optional)" {...field} />
-											</FormControl>
+											<div className="flex gap-2">
+												<FormControl>
+													<Input placeholder="Enter barcode (optional)" {...field} />
+												</FormControl>
+												<Button
+													type="button"
+													variant="outline"
+													onClick={() => form.setValue("barcode", generateBarcode())}
+													className="whitespace-nowrap"
+												>
+													Generate
+												</Button>
+											</div>
 											<FormMessage />
 										</FormItem>
 									)}
@@ -823,7 +760,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 											))}
 
 										{/* New images */}
-										{images.map((_, index) => (
+										{images?.map((_, index) => (
 											<div key={`new-${index}`} className="relative group">
 												<Image
 													src={previewImages[previewImages.length - images.length + index]}
@@ -918,161 +855,22 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 					</div>
 				</form>
 			</Form>
+
 			{/* =============== quick create category sheet ================ */}
-			<Sheet open={categorySheetOpen} onOpenChange={setCategorySheetOpen}>
-				<SheetContent side="right">
-					<SheetHeader>
-						<SheetTitle>Create Category</SheetTitle>
-					</SheetHeader>
-					<Form {...categoryForm}>
-						<form onSubmit={categoryForm.handleSubmit(submitQuickCategory)} className="space-y-3 p-4">
-							<FormField
-								control={categoryForm.control}
-								name={"name"}
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Name</FormLabel>
-										<FormControl>
-											<Input {...field} />
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={categoryForm.control}
-								name={"nameBN"}
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Name (BN)</FormLabel>
-										<FormControl>
-											<Input {...field} />
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={categoryForm.control}
-								name={"description"}
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Description</FormLabel>
-										<FormControl>
-											<Textarea {...field} />
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={categoryForm.control}
-								name={"descriptionBN"}
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Description (BN)</FormLabel>
-										<FormControl>
-											<Textarea {...field} />
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<div>
-								<Label>Image</Label>
-								<Input
-									type="file"
-									accept="image/*"
-									onChange={(e) => setQuickCategoryImage(e.target.files?.[0] || null)}
-								/>
-							</div>
-							<div className="flex justify-end">
-								<Button type="submit" disabled={categoryForm.formState.isSubmitting}>
-									Save
-								</Button>
-							</div>
-						</form>
-					</Form>
-				</SheetContent>
-			</Sheet>
+			<QuickCategoryForm
+				productForm={form}
+				setCategories={setCategories}
+				categorySheetOpen={categorySheetOpen}
+				setCategorySheetOpen={setCategorySheetOpen}
+			/>
 
 			{/* =============== quick create brand sheet ================ */}
-			<Sheet open={brandSheetOpen} onOpenChange={setBrandSheetOpen}>
-				<SheetContent side="right">
-					<SheetHeader>
-						<SheetTitle>Create Brand</SheetTitle>
-					</SheetHeader>
-					<Form {...brandForm}>
-						<form onSubmit={brandForm.handleSubmit(submitQuickBrand)} className="space-y-3 p-4">
-							<FormField
-								control={brandForm.control}
-								name={"name"}
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Name</FormLabel>
-										<FormControl>
-											<Input {...field} />
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={brandForm.control}
-								name={"nameBN"}
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Name (BN)</FormLabel>
-										<FormControl>
-											<Input {...field} />
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={brandForm.control}
-								name={"description"}
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Description</FormLabel>
-										<FormControl>
-											<Textarea {...field} />
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<FormField
-								control={brandForm.control}
-								name={"descriptionBN"}
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Description (BN)</FormLabel>
-										<FormControl>
-											<Textarea {...field} />
-										</FormControl>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<div>
-								<Label>Image</Label>
-								<Input
-									type="file"
-									accept="image/*"
-									onChange={(e) => setQuickBrandImage(e.target.files?.[0] || null)}
-								/>
-							</div>
-							<div className="flex justify-end">
-								<Button type="submit" disabled={brandForm.formState.isSubmitting}>
-									Save
-								</Button>
-							</div>
-						</form>
-					</Form>
-				</SheetContent>
-			</Sheet>
+			<QuickBrandForm
+				productForm={form}
+				setBrands={setBrands}
+				brandSheetOpen={brandSheetOpen}
+				setBrandSheetOpen={setBrandSheetOpen}
+			/>
 		</>
 	);
 }

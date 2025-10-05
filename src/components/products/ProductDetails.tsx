@@ -40,7 +40,6 @@ export default function ProductDetails({ product }: { product: IProduct }) {
 	// =============== reviews state ================
 	const [reviews, setReviews] = useState<ReviewView[]>([]);
 	const [loadingReviews, setLoadingReviews] = useState(true);
-	const [, setSubmitting] = useState(false);
 	const [isEditing, setIsEditing] = useState(false);
 	const [ownReview, setOwnReview] = useState<{ rating: number; review: string } | null>(null);
 	const [wishlisted, setWishlisted] = useState(false);
@@ -130,7 +129,6 @@ export default function ProductDetails({ product }: { product: IProduct }) {
 	// =============== submit review ================
 	const handleSubmitReview = async (data: { rating: number; review: string }) => {
 		try {
-			setSubmitting(true);
 			const formData = new FormData();
 			formData.set("rating", String(data.rating));
 			formData.set("review", data.review);
@@ -155,8 +153,9 @@ export default function ProductDetails({ product }: { product: IProduct }) {
 					setIsEditing(false);
 				}
 			}
-		} finally {
-			setSubmitting(false);
+		} catch (err) {
+			console.error(err);
+			toast.error("Failed to submit review");
 		}
 	};
 
@@ -190,7 +189,7 @@ export default function ProductDetails({ product }: { product: IProduct }) {
 						<div className="flex gap-2">
 							{product.gallery?.map((img: any, idx: number) => (
 								<div
-									key={(img?.imageKey as string) || (img as string)}
+									key={idx}
 									className={`w-16 h-16 border-2 rounded overflow-hidden cursor-pointer transition-all duration-200 ${
 										selectedImage === (img?.url || img)
 											? "border-primary shadow-md"
@@ -357,8 +356,8 @@ export default function ProductDetails({ product }: { product: IProduct }) {
 							<Loader2 className="w-4 h-4 animate-spin" /> Loading reviews...
 						</div>
 					)}
-					{reviews.map((review) => (
-						<div key={review._id} className="border rounded-lg p-4 bg-white shadow-sm">
+					{reviews?.map((review) => (
+						<div key={String(review?._id)} className="border rounded-lg p-4 bg-white shadow-sm">
 							<div className="flex items-center gap-2 mb-1">
 								{[1, 2, 3, 4, 5].map((index) => (
 									<Star
