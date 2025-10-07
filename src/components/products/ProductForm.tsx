@@ -98,7 +98,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 
 	const [previewImages, setPreviewImages] = useState<string[]>(
 		Array.isArray(product?.gallery)
-			? (product!.gallery as unknown as Array<string | { url: string }>).map((gallery) =>
+			? (product!.gallery as unknown as Array<string | { url: string }>)?.map((gallery) =>
 					typeof gallery === "string" ? gallery : gallery.url
 			  )
 			: []
