@@ -102,3 +102,19 @@ export interface ISales extends Document, ISalesUnpopulated {
 	user: PopulatedDoc<IUser & Document>;
 	coupon?: PopulatedDoc<ICoupon & Document>;
 }
+
+export type PurchaseLite = {
+	_id: string;
+	purchaseNumber: string;
+	totalAmount: number;
+	items: Array<{ product?: { title?: string; sku?: string } }>;
+};
+
+export type SalesOrderLite = {
+	_id: string;
+	orderNumber: string;
+	totalAmount: number;
+	items: Array<{ product?: { title?: string; sku?: string } }>;
+};
+
+export type VendorProductLite = { _id: string; title: string; price: number; stock: number };

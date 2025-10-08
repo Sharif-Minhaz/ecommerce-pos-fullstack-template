@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Pencil, Plus, FolderOpen, Folder } from "lucide-react";
 import { DeleteCategoryButton } from "@/components/shared/DeleteCategoryButton";
+import { ICategory } from "@/types/category";
 
 export default async function CategoriesPage() {
 	// =============== fetch vendor's categories ================
@@ -39,21 +40,21 @@ export default async function CategoriesPage() {
 
 			{/* =============== categories grid ================ */}
 			{categories && categories.length > 0 ? (
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-					{categories.map((category) => (
+				<div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+					{categories.map((category: ICategory) => (
 						<Card
-							key={category._id}
-							className="overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+							key={category._id?.toString()}
+							className="overflow-hidden shadow-sm hover:shadow-md transition-shadow py-0"
 						>
 							{/* =============== category image ================ */}
-							<div className="aspect-video relative bg-gray-50 flex items-center justify-center">
+							<div className="relative bg-gray-50 flex items-center justify-center">
 								{category.image ? (
 									<Image
 										src={category.image}
 										alt={category.name}
 										width={400}
-										height={200}
-										className="w-full h-full object-cover"
+										height={300}
+										className="w-full h-[300] object-cover"
 									/>
 								) : (
 									<div className="text-gray-400 text-center">
@@ -68,7 +69,7 @@ export default async function CategoriesPage() {
 							</div>
 
 							{/* =============== category details ================ */}
-							<div className="p-6">
+							<div className="p-6 pt-0">
 								<div className="mb-4">
 									<h3 className="text-xl font-semibold text-gray-900 mb-1">{category.name}</h3>
 									<p className="text-sm text-gray-500 mb-2">{category.nameBN}</p>

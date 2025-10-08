@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { getVendorShop, updateVendorShop } from "@/app/actions/shop";
@@ -9,6 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { shopSchema, type ShopValues } from "@/schema/shop-schema";
 import { toast } from "sonner";
 import {
 	Loader2,
@@ -45,11 +49,39 @@ export default function MyShopPage() {
 	const [updating, setUpdating] = useState(false);
 	const [isEditing, setIsEditing] = useState(false);
 	const [uploadingImage, setUploadingImage] = useState(false);
-	const [formData, setFormData] = useState({
-		shopName: "",
-		shopDescription: "",
-		registrationNumber: "",
+
+	// =============== form setup with zod validation ================
+	const form = useForm<ShopValues>({
+		resolver: zodResolver(shopSchema),
+		defaultValues: {
+			shopName: "",
+			shopDescription: "",
+			registrationNumber: "",
+		},
 	});
+
+	const fetchShop = useCallback(async () => {
+		try {
+			setLoading(true);
+			const result = await getVendorShop();
+
+			if (result.success && result.shop) {
+				setShop(result.shop);
+				// =============== populate form with shop data ================
+				form.reset({
+					shopName: result.shop.shopName || "",
+					shopDescription: result.shop.shopDescription || "",
+					registrationNumber: result.shop.registrationNumber || "",
+				});
+			} else {
+				toast.error(result.error || "Failed to fetch shop information");
+			}
+		} catch {
+			toast.error("An error occurred while fetching shop information");
+		} finally {
+			setLoading(false);
+		}
+	}, [form]);
 
 	// =============== check authentication and vendor status ================
 	useEffect(() => {
@@ -66,45 +98,15 @@ export default function MyShopPage() {
 		}
 
 		fetchShop();
-	}, [status, session, router]);
+	}, [status, session, router, fetchShop]);
 
-	const fetchShop = async () => {
-		try {
-			setLoading(true);
-			const result = await getVendorShop();
-
-			if (result.success && result.shop) {
-				setShop(result.shop);
-				setFormData({
-					shopName: result.shop.shopName || "",
-					shopDescription: result.shop.shopDescription || "",
-					registrationNumber: result.shop.registrationNumber || "",
-				});
-			} else {
-				toast.error(result.error || "Failed to fetch shop information");
-			}
-		} catch {
-			toast.error("An error occurred while fetching shop information");
-		} finally {
-			setLoading(false);
-		}
-	};
-
-	const handleInputChange = (field: string, value: string) => {
-		setFormData((prev) => ({
-			...prev,
-			[field]: value,
-		}));
-	};
-
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-
+	// =============== form submission with validation ================
+	const onSubmit = async (values: ShopValues) => {
 		try {
 			setUpdating(true);
 			const formDataObj = new FormData();
 
-			Object.entries(formData).forEach(([key, value]) => {
+			Object.entries(values).forEach(([key, value]) => {
 				formDataObj.append(key, value);
 			});
 
@@ -126,7 +128,8 @@ export default function MyShopPage() {
 
 	const handleCancel = () => {
 		if (shop) {
-			setFormData({
+			// =============== reset form to original shop data ================
+			form.reset({
 				shopName: shop.shopName || "",
 				shopDescription: shop.shopDescription || "",
 				registrationNumber: shop.registrationNumber || "",
@@ -171,7 +174,8 @@ export default function MyShopPage() {
 			} else {
 				toast.error(result.error || "Failed to remove image");
 			}
-		} catch {
+		} catch (err) {
+			console.error(err);
 			toast.error("An error occurred while removing image");
 		}
 	};
@@ -313,8 +317,8 @@ export default function MyShopPage() {
 										<X className="h-4 w-4 mr-2" />
 										Cancel
 									</Button>
-									<Button onClick={handleSubmit} disabled={updating}>
-										{updating ? (
+									<Button form="shop-form" type="submit" disabled={form.formState.isSubmitting}>
+										{updating || form.formState.isSubmitting ? (
 											<Loader2 className="h-4 w-4 mr-2 animate-spin" />
 										) : (
 											<Save className="h-4 w-4 mr-2" />
@@ -328,129 +332,143 @@ export default function MyShopPage() {
 				</Card>
 
 				{/* Shop Form */}
-				<form onSubmit={handleSubmit}>
-					<div className="grid gap-6">
-						{/* Shop Information */}
-						<Card>
-							<CardHeader>
-								<CardTitle className="flex items-center space-x-2">
-									<Store className="h-5 w-5" />
-									<span>Shop Information</span>
-								</CardTitle>
-								<CardDescription>Your business details and shop information</CardDescription>
-							</CardHeader>
-							<CardContent className="space-y-4">
-								<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-									<div className="space-y-2">
-										<Label htmlFor="shopName">Shop Name</Label>
-										<Input
-											id="shopName"
-											value={formData.shopName}
-											onChange={(e) => handleInputChange("shopName", e.target.value)}
-											disabled={!isEditing}
-											required
+				<Form {...form}>
+					<form id="shop-form" onSubmit={form.handleSubmit(onSubmit)}>
+						<div className="grid gap-6">
+							{/* Shop Information */}
+							<Card>
+								<CardHeader>
+									<CardTitle className="flex items-center space-x-2">
+										<Store className="h-5 w-5" />
+										<span>Shop Information</span>
+									</CardTitle>
+									<CardDescription>Your business details and shop information</CardDescription>
+								</CardHeader>
+								<CardContent className="space-y-4">
+									<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+										<FormField
+											control={form.control}
+											name="shopName"
+											render={({ field }) => (
+												<FormItem>
+													<FormLabel>Shop Name</FormLabel>
+													<FormControl>
+														<Input {...field} disabled={!isEditing} />
+													</FormControl>
+													<FormMessage />
+												</FormItem>
+											)}
+										/>
+										<FormField
+											control={form.control}
+											name="registrationNumber"
+											render={({ field }) => (
+												<FormItem>
+													<FormLabel>Registration Number</FormLabel>
+													<FormControl>
+														<Input {...field} disabled={!isEditing} />
+													</FormControl>
+													<FormMessage />
+												</FormItem>
+											)}
 										/>
 									</div>
-									<div className="space-y-2">
-										<Label htmlFor="registrationNumber">Registration Number</Label>
-										<Input
-											id="registrationNumber"
-											value={formData.registrationNumber}
-											onChange={(e) => handleInputChange("registrationNumber", e.target.value)}
-											disabled={!isEditing}
-											required
-										/>
-									</div>
-								</div>
 
-								<div className="space-y-2">
-									<Label htmlFor="shopDescription">Shop Description</Label>
-									<Textarea
-										id="shopDescription"
-										value={formData.shopDescription}
-										onChange={(e) => handleInputChange("shopDescription", e.target.value)}
-										disabled={!isEditing}
-										placeholder="Describe your shop and what you offer..."
-										rows={4}
-										required
-									/>
-								</div>
-							</CardContent>
-						</Card>
-
-						{/* Shop Images */}
-						<Card>
-							<CardHeader>
-								<CardTitle className="flex items-center space-x-2">
-									<ImageIcon className="h-5 w-5" />
-									<span>Shop Images</span>
-								</CardTitle>
-								<CardDescription>Upload and manage images for your shop</CardDescription>
-							</CardHeader>
-							<CardContent className="space-y-4">
-								{/* Image Upload */}
-								<div className="space-y-2">
-									<Label htmlFor="imageUpload">Upload New Image</Label>
-									<div className="flex items-center space-x-2">
-										<Input
-											id="imageUpload"
-											type="file"
-											accept="image/*"
-											onChange={handleImageUpload}
-											disabled={uploadingImage}
-											className="flex-1"
-										/>
-										{uploadingImage && <Loader2 className="h-4 w-4 animate-spin" />}
-									</div>
-									<p className="text-sm text-muted-foreground">
-										Upload high-quality images to showcase your shop
-									</p>
-								</div>
-
-								{/* Current Images */}
-								{shop.shopImages && shop.shopImages.length > 0 && (
-									<div className="space-y-3">
-										<Label>Current Images</Label>
-										<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-											{shop.shopImages.map((imageUrl, index) => (
-												<div key={index} className="relative group">
-													<Image
-														src={imageUrl}
-														alt={`Shop image ${index + 1}`}
-														width={200}
-														height={200}
-														className="w-full h-32 object-cover rounded-lg"
+									<FormField
+										control={form.control}
+										name="shopDescription"
+										render={({ field }) => (
+											<FormItem>
+												<FormLabel>Shop Description</FormLabel>
+												<FormControl>
+													<Textarea
+														{...field}
+														disabled={!isEditing}
+														placeholder="Describe your shop and what you offer..."
+														rows={4}
 													/>
-													<Button
-														variant="destructive"
-														size="sm"
-														className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-														onClick={() => removeImage(imageUrl)}
-													>
-														<Trash2 className="h-4 w-4" />
-													</Button>
-												</div>
-											))}
-										</div>
-									</div>
-								)}
-							</CardContent>
-						</Card>
+												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+								</CardContent>
+							</Card>
 
-						{/* Last Updated */}
-						<Card>
-							<CardHeader>
-								<CardTitle>Last Updated</CardTitle>
-								<CardDescription>When your shop information was last modified</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<p className="text-sm text-muted-foreground">
-									{new Date(shop.updatedAt).toLocaleString()}
-								</p>
-							</CardContent>
-						</Card>
-					</div>
-				</form>
+							{/* Shop Images */}
+							<Card>
+								<CardHeader>
+									<CardTitle className="flex items-center space-x-2">
+										<ImageIcon className="h-5 w-5" />
+										<span>Shop Images</span>
+									</CardTitle>
+									<CardDescription>Upload and manage images for your shop</CardDescription>
+								</CardHeader>
+								<CardContent className="space-y-4">
+									{/* Image Upload */}
+									<div className="space-y-2">
+										<Label htmlFor="imageUpload">Upload New Image</Label>
+										<div className="flex items-center space-x-2">
+											<Input
+												id="imageUpload"
+												type="file"
+												accept="image/*"
+												onChange={handleImageUpload}
+												disabled={uploadingImage}
+												className="flex-1"
+											/>
+											{uploadingImage && <Loader2 className="h-4 w-4 animate-spin" />}
+										</div>
+										<p className="text-sm text-muted-foreground">
+											Upload high-quality images to showcase your shop
+										</p>
+									</div>
+
+									{/* Current Images */}
+									{shop.shopImages && shop.shopImages.length > 0 && (
+										<div className="space-y-3">
+											<Label>Current Images</Label>
+											<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+												{shop.shopImages.map((imageUrl, index) => (
+													<div key={index} className="relative group">
+														<Image
+															src={imageUrl}
+															alt={`Shop image ${index + 1}`}
+															width={200}
+															height={200}
+															className="w-full h-32 object-cover rounded-lg"
+														/>
+														<Button
+															variant="destructive"
+															size="sm"
+															className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+															onClick={() => removeImage(imageUrl)}
+														>
+															<Trash2 className="h-4 w-4" />
+														</Button>
+													</div>
+												))}
+											</div>
+										</div>
+									)}
+								</CardContent>
+							</Card>
+
+							{/* Last Updated */}
+							<Card>
+								<CardHeader>
+									<CardTitle>Last Updated</CardTitle>
+									<CardDescription>When your shop information was last modified</CardDescription>
+								</CardHeader>
+								<CardContent>
+									<p className="text-sm text-muted-foreground">
+										{new Date(shop.updatedAt).toLocaleString()}
+									</p>
+								</CardContent>
+							</Card>
+						</div>
+					</form>
+				</Form>
 			</div>
 
 			{/* =============== floating action button for quick product creation =============== */}

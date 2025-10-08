@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Pencil, Plus } from "lucide-react";
 import { DeleteBrandButton } from "@/components/shared/DeleteBrandButton";
+import { IBrand } from "@/types/brand";
 
 export default async function BrandsPage() {
 	// =============== fetch vendor's brands ================
@@ -39,18 +40,21 @@ export default async function BrandsPage() {
 
 			{/* =============== brands grid ================ */}
 			{brands && brands.length > 0 ? (
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-					{brands.map((brand) => (
-						<Card key={brand._id} className="overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+				<div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+					{brands.map((brand: IBrand) => (
+						<Card
+							key={brand._id?.toString()}
+							className="overflow-hidden shadow-sm hover:shadow-md transition-shadow py-0"
+						>
 							{/* =============== brand image ================ */}
-							<div className="aspect-video relative bg-gray-50 flex items-center justify-center">
+							<div className="relative bg-gray-50 flex items-center justify-center">
 								{brand.image ? (
 									<Image
 										src={brand.image}
 										alt={brand.name}
 										width={400}
-										height={200}
-										className="w-full h-full object-contain p-4"
+										height={300}
+										className="w-full h-[300] object-cover p-4"
 									/>
 								) : (
 									<div className="text-gray-400 text-center">
@@ -60,7 +64,7 @@ export default async function BrandsPage() {
 							</div>
 
 							{/* =============== brand details ================ */}
-							<div className="p-6">
+							<div className="p-6 pt-0">
 								<div className="mb-4">
 									<h3 className="text-xl font-semibold text-gray-900 mb-1">{brand.name}</h3>
 									<p className="text-sm text-gray-500 mb-2">{brand.nameBN}</p>
@@ -80,14 +84,14 @@ export default async function BrandsPage() {
 								</div>
 
 								{/* =============== action buttons ================ */}
-								<div className="flex gap-2">
+								<div className="flex gap-2 items-center">
 									<Link href={`/my-shop/brands/${brand._id}/edit`} className="flex-1">
 										<Button variant="outline" className="w-full flex items-center gap-2">
 											<Pencil className="w-4 h-4" />
 											Edit
 										</Button>
 									</Link>
-									<DeleteBrandButton brandId={brand._id} brandName={brand.name} />
+									<DeleteBrandButton brandId={brand._id?.toString() || ""} brandName={brand.name} />
 								</div>
 							</div>
 						</Card>
