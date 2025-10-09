@@ -51,7 +51,7 @@ const supplierDetailsSchema = new Schema({
 		type: String,
 		required: [true, "Supplier phone is required"],
 		trim: true,
-		match: [/^\+?[1-9]\d{1,14}$/, "Please enter a valid international phone number"],
+		match: [/^[+]?[\d\s\-()]{6,}$/, "Please enter a valid phone number"],
 	},
 	email: {
 		type: String,
@@ -63,7 +63,7 @@ const supplierDetailsSchema = new Schema({
 		type: String,
 		required: [true, "Supplier address is required"],
 		trim: true,
-		minlength: [10, "Address must be at least 10 characters long"],
+		minlength: [3, "Address must be at least 3 characters long"],
 		maxlength: [500, "Address cannot exceed 500 characters"],
 	},
 	city: {
@@ -119,6 +119,15 @@ const purchaseSchema = new Schema<IPurchase>(
 			required: [true, "Purchase number is required"],
 			unique: true,
 			trim: true,
+			default: function () {
+				const date = new Date();
+				const dateStr =
+					date.getFullYear().toString() +
+					(date.getMonth() + 1).toString().padStart(2, "0") +
+					date.getDate().toString().padStart(2, "0");
+				const randomStr = Math.random().toString(36).substring(2, 7).toUpperCase();
+				return `PUR-${dateStr}-${randomStr}`;
+			},
 		},
 		purchaseDate: {
 			type: Date,
@@ -207,6 +216,11 @@ const purchaseSchema = new Schema<IPurchase>(
 			type: Number,
 			required: [true, "Due amount is required"],
 			min: [0, "Due amount cannot be negative"],
+			default: 0,
+		},
+		returnAmount: {
+			type: Number,
+			min: [0, "Return amount cannot be negative"],
 			default: 0,
 		},
 		paymentMethod: {
@@ -325,7 +339,8 @@ purchaseSchema.methods.calculateTotals = function (this: IPurchase) {
 
 	this.subtotal = subtotal;
 	this.totalAmount = totalAmount;
-	this.due = totalAmount - this.paid;
+	this.due = Math.max(0, totalAmount - this.paid);
+	this.returnAmount = Math.max(0, this.paid - totalAmount);
 
 	return {
 		subtotal,
@@ -365,7 +380,14 @@ purchaseSchema.methods.receiveItems = function (
 	receivedItems: Array<{ productId: string; receivedQuantity: number; damagedQuantity?: number }>
 ) {
 	receivedItems.forEach(({ productId, receivedQuantity, damagedQuantity = 0 }) => {
-		const itemIndex = this.items.findIndex((item: any) => item.product.toString() === productId);
+		const itemIndex = this.items.findIndex((item) => {
+			const prod = item.product as unknown as mongoose.Types.ObjectId | { _id?: mongoose.Types.ObjectId };
+			const idString =
+				typeof (prod as mongoose.Types.ObjectId).toString === "function"
+					? (prod as mongoose.Types.ObjectId).toString()
+					: String((prod as { _id?: mongoose.Types.ObjectId })._id);
+			return idString === productId;
+		});
 		if (itemIndex !== -1) {
 			this.items[itemIndex].receivedQuantity = (this.items[itemIndex].receivedQuantity || 0) + receivedQuantity;
 			this.items[itemIndex].damagedQuantity = (this.items[itemIndex].damagedQuantity || 0) + damagedQuantity;
@@ -373,7 +395,7 @@ purchaseSchema.methods.receiveItems = function (
 	});
 
 	// Check if all items are received
-	const allReceived = this.items.every((item: any) => (item.receivedQuantity || 0) >= item.quantity);
+	const allReceived = this.items.every((item) => (item.receivedQuantity || 0) >= item.quantity);
 
 	if (allReceived) {
 		this.purchaseStatus = "received";

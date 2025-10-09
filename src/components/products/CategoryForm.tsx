@@ -60,8 +60,8 @@ export function CategoryForm({ initialData, isEdit = false }: CategoryFormProps)
 			formData.append("description", data.description);
 			formData.append("descriptionBN", data.descriptionBN);
 
-			// =============== add image ================
-			if (data.image) {
+			// =============== add image only if it's a new file ================
+			if (data.image && data.image instanceof File) {
 				formData.append("image", data.image);
 			}
 

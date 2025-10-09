@@ -10,6 +10,7 @@ import { Product } from "@/models/ProductModel";
 import { convertToPlaintObject } from "@/lib/utils";
 import { notificationFactory } from "@/lib/notification-factory";
 import { orderEmailIntegration } from "@/lib/email-integration";
+import { ISalesData } from "@/types/sales";
 
 type CreateOrderItem = {
 	productId: string;
@@ -177,6 +178,8 @@ export type CreatePosSaleInput = {
 	taxAmount?: number;
 	paymentMethod?: "cod" | "stripe" | "sslcommerz" | "cash";
 	totalOverride?: number; // allow editing overall price
+	paid?: number; // amount customer paid
+	returnAmount: number;
 };
 
 export async function createPosSale(input: CreatePosSaleInput) {
@@ -218,45 +221,15 @@ export async function createPosSale(input: CreatePosSaleInput) {
 		if (typeof input.totalOverride === "number" && input.totalOverride >= 0) {
 			totalAmount = input.totalOverride;
 		}
+		const paid = typeof input.paid === "number" && input.paid >= 0 ? input.paid : 0;
+		const due = Math.max(0, totalAmount - paid);
+		const returnAmount = Math.max(0, paid - totalAmount);
 
 		// =============== check delivery and customer info independently ================
 		const hasDeliveryInfo = input.customerAddress || input.customerCity || input.customerPostalCode;
 		const hasCustomerInfo = input.customerName || input.customerPhone || input.customerEmail;
 
-		const salesData: {
-			orderNumber: string;
-			orderName: string;
-			items: Array<{
-				product: Types.ObjectId;
-				quantity: number;
-				unitPrice: number;
-				totalPrice: number;
-			}>;
-			actualPrice: number;
-			deliveryCharge: number;
-			subtotal: number;
-			discount: number;
-			couponDiscount: number;
-			totalAmount: number;
-			paymentMethod: string;
-			status: string;
-			user: Types.ObjectId;
-			paid: number;
-			due: number;
-			taxAmount: number;
-			notes?: string;
-			isPaid: boolean;
-			isDelivered: boolean;
-			deliveryDetails?: {
-				name: string;
-				phone: string;
-				email: string;
-				address: string;
-				city: string;
-				postalCode: string;
-				country: string;
-			};
-		} = {
+		const salesData: ISalesData = {
 			orderNumber: crypto.randomUUID(),
 			orderName: hasCustomerInfo ? `POS Sale - ${input.customerName || "Customer"}` : "POS Sale",
 			items,
@@ -269,12 +242,13 @@ export async function createPosSale(input: CreatePosSaleInput) {
 			paymentMethod: input.paymentMethod ?? "cash",
 			status: "delivered", // POS sales are considered delivered
 			user: new Types.ObjectId(session.user.id),
-			paid: totalAmount,
-			due: 0,
+			paid,
+			due,
 			taxAmount,
 			notes: input.notes,
-			isPaid: true,
+			isPaid: paid >= totalAmount,
 			isDelivered: true,
+			returnAmount,
 		};
 
 		// =============== add delivery details if delivery info is provided (independent of customer info) ================

@@ -45,6 +45,7 @@ export interface IPurchaseBase {
 	supplierDetails: SupplierDetails;
 	paid: number;
 	due: number;
+	returnAmount: number;
 	paymentMethod?: string;
 	expectedDeliveryDate?: Date;
 	actualDeliveryDate?: Date;

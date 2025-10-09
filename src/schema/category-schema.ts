@@ -12,9 +12,7 @@ export const categorySchema = z.object({
 	nameBN: z.string().min(1, "Category name in Bengali is required"),
 	description: z.string().min(1, "Description in English is required"),
 	descriptionBN: z.string().min(1, "Description in Bengali is required"),
-	image: z.any().refine((file) => file && file instanceof File, {
-		message: "Category image is required",
-	}),
+	image: z.any().optional(),
 });
 
 export type QuickCategoryValues = z.infer<typeof quickCategorySchema>;

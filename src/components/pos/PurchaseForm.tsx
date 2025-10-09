@@ -4,9 +4,13 @@ import { PurchaseLite, VendorProductLite } from "@/types/sales";
 import { createPosPurchase } from "@/app/actions/purchase";
 import { getVendorPurchases } from "@/app/actions/purchase";
 import { Input } from "../ui/input";
-import { Label } from "../ui/label";
 import { Button } from "../ui/button";
 import { showReadAbleCurrency } from "@/lib/utils";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../ui/select";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "../ui/form";
+import { useForm, Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { purchaseFormSchema, PurchaseFormValues } from "@/schema/purchase-schema";
 
 export default function PurchaseForm({
 	products,
@@ -18,53 +22,55 @@ export default function PurchaseForm({
 	const [purchaseItems, setPurchaseItems] = useState<
 		Array<{ productId: string; title: string; sku: string; quantity: number; purchasePrice: number }>
 	>([{ productId: "", title: "", sku: "", quantity: 1, purchasePrice: 0 }]);
-	const [purchaseMeta, setPurchaseMeta] = useState({
-		deliveryCharge: 0,
-		discount: 0,
-		vat: 0,
-		paid: 0,
-		discountType: "flat" as "flat" | "percentage",
+	const form = useForm<PurchaseFormValues>({
+		resolver: zodResolver(purchaseFormSchema) as Resolver<PurchaseFormValues>,
+		defaultValues: {
+			supplierName: "",
+			phone: "",
+			address: "",
+			city: "",
+			postalCode: "",
+			country: "Bangladesh",
+			shopName: "",
+			email: "",
+			deliveryCharge: 0,
+			discount: 0,
+			discountType: "flat",
+			vat: 0,
+			paid: 0,
+			notes: "",
+		},
 	});
-	const [supplier, setSupplier] = useState({
-		name: "",
-		phone: "",
-		address: "",
-		city: "",
-		postalCode: "",
-		country: "Bangladesh",
-		shopName: "",
-		email: "",
-	});
-	const [purchaseNotes, setPurchaseNotes] = useState("");
 	const purchaseSubtotal = useMemo(
 		() => purchaseItems.reduce((s, item) => s + (item.purchasePrice || 0) * (item.quantity || 0), 0),
 		[purchaseItems]
 	);
+	const watchDiscount = Number(form.watch("discount")) || 0;
+	const watchDC = Number(form.watch("deliveryCharge")) || 0;
+	const watchVat = Number(form.watch("vat")) || 0;
+	const watchType = form.watch("discountType");
+	const watchPaid = Number(form.watch("paid")) || 0;
+
 	const purchaseTotal = useMemo(() => {
-		const discount = Number(purchaseMeta.discount) || 0;
-		const dc = Number(purchaseMeta.deliveryCharge) || 0;
-		const vat = Number(purchaseMeta.vat) || 0;
-		const discountAmount =
-			purchaseMeta.discountType === "percentage" ? (purchaseSubtotal * discount) / 100 : discount;
+		const discountAmount = watchType === "percentage" ? (purchaseSubtotal * watchDiscount) / 100 : watchDiscount;
 		const finalSubtotal = Math.max(0, purchaseSubtotal - discountAmount);
-		return finalSubtotal + dc + (finalSubtotal * vat) / 100;
-	}, [purchaseSubtotal, purchaseMeta]);
+		return finalSubtotal + watchDC + (finalSubtotal * watchVat) / 100;
+	}, [purchaseSubtotal, watchDiscount, watchType, watchDC, watchVat]);
+
+	const purchaseDue = useMemo(() => Math.max(0, purchaseTotal - watchPaid), [purchaseTotal, watchPaid]);
+	const purchaseReturn = useMemo(() => Math.max(0, watchPaid - purchaseTotal), [purchaseTotal, watchPaid]);
 
 	const handleAddPurchaseRow = () =>
 		setPurchaseItems((prev) => [...prev, { productId: "", title: "", sku: "", quantity: 1, purchasePrice: 0 }]);
 	const handleRemovePurchaseRow = (idx: number) =>
-		setPurchaseItems((prev) => (prev.length > 1 ? prev.filter((_, index) => index !== idx) : prev));
+		setPurchaseItems((prev) => {
+			if (prev.length > 1) return prev.filter((_, index) => index !== idx);
+			const copy = [...prev];
+			copy[idx] = { productId: "", title: "", sku: "", quantity: 1, purchasePrice: 0 };
+			return copy;
+		});
 
-	const submitPurchase = async () => {
-		if (
-			!supplier.name ||
-			!supplier.phone ||
-			!supplier.address ||
-			!supplier.city ||
-			!supplier.postalCode ||
-			!supplier.shopName
-		)
-			return;
+	const submitPurchase = async (values: PurchaseFormValues) => {
 		const payload = {
 			items: purchaseItems.map((item) => ({
 				productId: item.productId || undefined,
@@ -73,29 +79,27 @@ export default function PurchaseForm({
 				quantity: item.quantity,
 				purchasePrice: item.purchasePrice,
 			})),
-			deliveryCharge: Number(purchaseMeta.deliveryCharge) || 0,
-			discount: Number(purchaseMeta.discount) || 0,
-			discountType: purchaseMeta.discountType,
-			vat: Number(purchaseMeta.vat) || 0,
-			paid: Number(purchaseMeta.paid) || 0,
-			supplierDetails: supplier,
-			notes: purchaseNotes,
+			deliveryCharge: Number(values.deliveryCharge) || 0,
+			discount: Number(values.discount) || 0,
+			discountType: values.discountType,
+			vat: Number(values.vat) || 0,
+			paid: Number(values.paid) || 0,
+			supplierDetails: {
+				name: values.supplierName,
+				phone: values.phone,
+				address: values.address,
+				city: values.city,
+				postalCode: values.postalCode,
+				country: values.country || "Bangladesh",
+				shopName: values.shopName,
+				email: values.email || undefined,
+			},
+			notes: values.notes || "",
 		};
 		const res = await createPosPurchase(payload as unknown as Parameters<typeof createPosPurchase>[0]);
 		if ((res as { success: boolean }).success) {
 			setPurchaseItems([{ productId: "", title: "", sku: "", quantity: 1, purchasePrice: 0 }]);
-			setPurchaseMeta({ deliveryCharge: 0, discount: 0, vat: 0, paid: 0, discountType: "flat" });
-			setSupplier({
-				name: "",
-				phone: "",
-				address: "",
-				city: "",
-				postalCode: "",
-				country: "Bangladesh",
-				shopName: "",
-				email: "",
-			});
-			setPurchaseNotes("");
+			form.reset();
 			const purRes = await getVendorPurchases();
 			if ((purRes as { success: boolean }).success) {
 				const d = purRes as { success: true; purchases: PurchaseLite[] };
@@ -117,24 +121,27 @@ export default function PurchaseForm({
 					</div>
 					{purchaseItems.map((product, idx) => (
 						<div key={idx} className="grid grid-cols-12 gap-3 items-center border rounded-md p-3">
-							<select
-								className="col-span-4 border rounded-md h-10 px-2 bg-background"
+							<Select
 								value={product.productId}
-								onChange={(e) =>
+								onValueChange={(value) =>
 									setPurchaseItems((prev) => {
 										const copy = [...prev];
-										copy[idx].productId = e.target.value;
+										copy[idx].productId = value;
 										return copy;
 									})
 								}
 							>
-								<option value="">-- Select existing --</option>
-								{products.map((product) => (
-									<option key={product._id} value={product._id}>
-										{product.title}
-									</option>
-								))}
-							</select>
+								<SelectTrigger className="col-span-4 w-full">
+									<SelectValue placeholder="-- Select existing --" />
+								</SelectTrigger>
+								<SelectContent>
+									{products.map((p) => (
+										<SelectItem key={p._id} value={p._id}>
+											{p.title}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
 							<Input
 								className="col-span-2"
 								type="number"
@@ -177,7 +184,7 @@ export default function PurchaseForm({
 							</div>
 							<div className="col-span-12 grid grid-cols-12 gap-3">
 								<Input
-									className="col-span-12"
+									className="col-span-10"
 									placeholder="Product title (if new)"
 									value={product.title}
 									onChange={(e) =>
@@ -188,15 +195,11 @@ export default function PurchaseForm({
 										})
 									}
 								/>
-							</div>
-							<div className="col-span-12 flex justify-between mt-2">
-								<Button
-									variant="ghost"
-									onClick={() => handleRemovePurchaseRow(idx)}
-									disabled={purchaseItems.length === 1}
-								>
-									Remove
-								</Button>
+								<div className="col-span-2 flex justify-end">
+									<Button variant="outline" onClick={() => handleRemovePurchaseRow(idx)}>
+										Remove
+									</Button>
+								</div>
 							</div>
 						</div>
 					))}
@@ -204,103 +207,239 @@ export default function PurchaseForm({
 						+ Add Item
 					</Button>
 
-					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-						<div className="space-y-2">
-							<Label>Supplier Name</Label>
-							<Input
-								value={supplier.name}
-								onChange={(e) => setSupplier((v) => ({ ...v, name: e.target.value }))}
-							/>
-							<Label>Phone</Label>
-							<Input
-								value={supplier.phone}
-								onChange={(e) => setSupplier((v) => ({ ...v, phone: e.target.value }))}
-							/>
-							<Label>Address</Label>
-							<Input
-								value={supplier.address}
-								onChange={(e) => setSupplier((v) => ({ ...v, address: e.target.value }))}
-							/>
-							<Label>City</Label>
-							<Input
-								value={supplier.city}
-								onChange={(e) => setSupplier((v) => ({ ...v, city: e.target.value }))}
-							/>
-							<Label>Postal Code</Label>
-							<Input
-								value={supplier.postalCode}
-								onChange={(e) => setSupplier((v) => ({ ...v, postalCode: e.target.value }))}
-							/>
-							<Label>Shop Name</Label>
-							<Input
-								value={supplier.shopName}
-								onChange={(e) => setSupplier((v) => ({ ...v, shopName: e.target.value }))}
-							/>
-							<Label>Email (optional)</Label>
-							<Input
-								value={supplier.email}
-								onChange={(e) => setSupplier((v) => ({ ...v, email: e.target.value }))}
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label>Delivery Charge</Label>
-							<Input
-								type="number"
-								value={purchaseMeta.deliveryCharge}
-								onChange={(e) =>
-									setPurchaseMeta((v) => ({
-										...v,
-										deliveryCharge: Number(e.target.value),
-									}))
-								}
-							/>
-							<Label>Discount</Label>
-							<Input
-								type="number"
-								value={purchaseMeta.discount}
-								onChange={(e) => setPurchaseMeta((v) => ({ ...v, discount: Number(e.target.value) }))}
-							/>
-							<Label>Discount Type</Label>
-							<select
-								className="w-full border rounded-md h-10 px-2 bg-background"
-								value={purchaseMeta.discountType}
-								onChange={(e) =>
-									setPurchaseMeta((v) => ({
-										...v,
-										discountType: e.target.value as "flat" | "percentage",
-									}))
-								}
-							>
-								<option value="flat">Flat</option>
-								<option value="percentage">Percentage</option>
-							</select>
-							<Label>VAT (%)</Label>
-							<Input
-								type="number"
-								value={purchaseMeta.vat}
-								onChange={(e) => setPurchaseMeta((v) => ({ ...v, vat: Number(e.target.value) }))}
-							/>
-							<Label>Paid</Label>
-							<Input
-								type="number"
-								value={purchaseMeta.paid}
-								onChange={(e) => setPurchaseMeta((v) => ({ ...v, paid: Number(e.target.value) }))}
-							/>
-						</div>
-					</div>
-					<div className="mt-4 bg-gray-50 p-4 rounded-md border">
-						<div className="flex justify-between text-sm">
-							<span>Subtotal</span>
-							<span>{showReadAbleCurrency(purchaseSubtotal)}</span>
-						</div>
-						<div className="flex justify-between text-sm">
-							<span>Total</span>
-							<span>{showReadAbleCurrency(purchaseTotal)}</span>
-						</div>
-					</div>
-					<Button className="w-full mt-4" onClick={submitPurchase}>
-						Save Purchase
-					</Button>
+					<Form {...form}>
+						<form
+							onSubmit={form.handleSubmit(submitPurchase)}
+							className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4"
+						>
+							<div className="space-y-2">
+								<FormField
+									control={form.control}
+									name="supplierName"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Supplier Name</FormLabel>
+											<FormControl>
+												<Input {...field} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="phone"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Phone</FormLabel>
+											<FormControl>
+												<Input {...field} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="address"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Address</FormLabel>
+											<FormControl>
+												<Input {...field} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="city"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>City</FormLabel>
+											<FormControl>
+												<Input {...field} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="postalCode"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Postal Code</FormLabel>
+											<FormControl>
+												<Input {...field} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="shopName"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Shop Name</FormLabel>
+											<FormControl>
+												<Input {...field} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="email"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Email (optional)</FormLabel>
+											<FormControl>
+												<Input {...field} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</div>
+							<div className="space-y-2">
+								<FormField
+									control={form.control}
+									name="deliveryCharge"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Delivery Charge</FormLabel>
+											<FormControl>
+												<Input
+													type="number"
+													value={field.value}
+													onChange={(e) => field.onChange(e.target.value)}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="discount"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Discount</FormLabel>
+											<FormControl>
+												<Input
+													type="number"
+													value={field.value}
+													onChange={(e) => field.onChange(e.target.value)}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="discountType"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Discount Type</FormLabel>
+											<Select value={field.value} onValueChange={(val) => field.onChange(val)}>
+												<SelectTrigger className="w-full">
+													<SelectValue placeholder="Discount type" />
+												</SelectTrigger>
+												<SelectContent>
+													<SelectItem value="flat">Flat</SelectItem>
+													<SelectItem value="percentage">Percentage</SelectItem>
+												</SelectContent>
+											</Select>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="vat"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>VAT (%)</FormLabel>
+											<FormControl>
+												<Input
+													type="number"
+													value={field.value}
+													onChange={(e) => field.onChange(e.target.value)}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+								<FormField
+									control={form.control}
+									name="paid"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Paid</FormLabel>
+											<FormControl>
+												<Input
+													type="number"
+													value={field.value}
+													onChange={(e) => field.onChange(e.target.value)}
+												/>
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</div>
+							<div className="col-span-1 sm:col-span-2">
+								<FormField
+									control={form.control}
+									name="notes"
+									render={({ field }) => (
+										<FormItem>
+											<FormLabel>Notes</FormLabel>
+											<FormControl>
+												<Input {...field} />
+											</FormControl>
+											<FormMessage />
+										</FormItem>
+									)}
+								/>
+							</div>
+							<div className="col-span-1 sm:col-span-2 mt-4 bg-gray-50 p-4 rounded-md border">
+								<div className="flex justify-between text-sm">
+									<span>Subtotal</span>
+									<span>{showReadAbleCurrency(purchaseSubtotal)}</span>
+								</div>
+								<div className="flex justify-between text-sm">
+									<span>Total</span>
+									<span>{showReadAbleCurrency(purchaseTotal)}</span>
+								</div>
+								<div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+									<div className="flex flex-col justify-end">
+										<div className="flex justify-between text-sm">
+											<span>Due</span>
+											<span>{showReadAbleCurrency(purchaseDue)}</span>
+										</div>
+									</div>
+									<div className="flex flex-col justify-end">
+										<div className="flex justify-between text-sm">
+											<span>Return</span>
+											<span>{showReadAbleCurrency(purchaseReturn)}</span>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div className="col-span-1 sm:col-span-2">
+								<Button className="w-full mt-4" type="submit" disabled={form.formState.isSubmitting}>
+									Save Purchase
+								</Button>
+							</div>
+						</form>
+					</Form>
 				</div>
 			</CardContent>
 		</Card>

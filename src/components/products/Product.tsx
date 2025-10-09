@@ -39,9 +39,7 @@ export default function Product({ product }: { product: IProduct }) {
 				<Link href={`/products/${product.slug}`} className="w-full">
 					<div className="w-full h-[170px] mx-auto relative mb-2 rounded bg-white flex items-center justify-center">
 						<Image
-							src={
-								(product?.gallery[0] as any)?.url || (product?.gallery[0] as any) || defaultProductImage
-							}
+							src={(product?.gallery[0] as { url: string })?.url || defaultProductImage}
 							alt={product.title}
 							fill
 							sizes="170px"

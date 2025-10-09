@@ -38,6 +38,7 @@ export default function SalesForm({
 			discount: 0,
 			taxAmount: 0,
 			totalOverride: "",
+			paid: 0,
 		},
 	});
 
@@ -46,18 +47,38 @@ export default function SalesForm({
 		() => salesItems.reduce((s, item) => s + (item.unitPrice || 0) * (item.quantity || 0), 0),
 		[salesItems]
 	);
+	// watch individual inputs so changes re-compute live
+	const watchDiscount = Number(form.watch("discount")) || 0;
+	const watchDeliveryCharge = Number(form.watch("deliveryCharge")) || 0;
+	const watchTaxAmount = Number(form.watch("taxAmount")) || 0;
+	const watchPaid = Number(form.watch("paid")) || 0;
+	const watchTotalOverride = form.watch("totalOverride");
+
 	const computedSaleTotal = useMemo(() => {
-		const discount = Number(form.watch("discount")) || 0;
-		const deliveryCharge = Number(form.watch("deliveryCharge")) || 0;
-		const taxAmount = Number(form.watch("taxAmount")) || 0;
-		const subtotal = Math.max(0, salesSubtotal - discount);
-		return subtotal + deliveryCharge + taxAmount;
-	}, [salesSubtotal, form]);
+		const subtotal = Math.max(0, salesSubtotal - watchDiscount);
+		return subtotal + watchDeliveryCharge + watchTaxAmount;
+	}, [salesSubtotal, watchDiscount, watchDeliveryCharge, watchTaxAmount]);
+
+	const effectiveTotal = useMemo(() => {
+		if (watchTotalOverride !== "" && watchTotalOverride != null) {
+			const ov = Number(watchTotalOverride);
+			if (Number.isFinite(ov) && ov >= 0) return ov;
+		}
+		return computedSaleTotal;
+	}, [watchTotalOverride, computedSaleTotal]);
+
+	const computedDue = useMemo(() => Math.max(0, effectiveTotal - watchPaid), [effectiveTotal, watchPaid]);
+	const computedReturn = useMemo(() => Math.max(0, watchPaid - effectiveTotal), [effectiveTotal, watchPaid]);
 
 	const handleAddSalesRow = () => setSalesItems((prev) => [...prev, { productId: "", quantity: 1, unitPrice: 0 }]);
 
 	const handleRemoveSalesRow = (idx: number) => {
-		setSalesItems((prev) => (prev.length > 1 ? prev.filter((_, index) => index !== idx) : prev));
+		setSalesItems((prev) => {
+			if (prev.length > 1) return prev.filter((_, index) => index !== idx);
+			const copy = [...prev];
+			copy[idx] = { productId: "", quantity: 1, unitPrice: 0 };
+			return copy;
+		});
 		form.resetField("totalOverride");
 	};
 
@@ -87,6 +108,7 @@ export default function SalesForm({
 			discount: Number(values.discount) || 0,
 			taxAmount: Number(values.taxAmount) || 0,
 			totalOverride: values.totalOverride === "" ? undefined : Number(values.totalOverride),
+			paid: Number(values.paid) || 0,
 		};
 
 		const res = await createPosSale(payload as unknown as Parameters<typeof createPosSale>[0]);
@@ -98,8 +120,8 @@ export default function SalesForm({
 
 			const salesRes = await getVendorDeliveredSales();
 			if ((salesRes as { success: boolean }).success) {
-				const d = salesRes as { success: true; orders: SalesOrderLite[] };
-				setHistorySales(d.orders);
+				const data = salesRes as { success: true; orders: SalesOrderLite[] };
+				setHistorySales(data.orders);
 			}
 		} else {
 			toast.error("Failed to create sale");
@@ -182,15 +204,17 @@ export default function SalesForm({
 									{showReadAbleCurrency((item.unitPrice || 0) * (item.quantity || 0))}
 								</div>
 								<div className="col-span-2 flex items-center justify-end">
-									<Button
-										variant="outline"
-										size="icon"
-										aria-label="remove"
-										className="text-red-500"
-										onClick={() => handleRemoveSalesRow(idx)}
-									>
-										<X />
-									</Button>
+									{idx !== 0 && (
+										<Button
+											variant="outline"
+											size="icon"
+											aria-label="remove"
+											className="text-red-500"
+											onClick={() => handleRemoveSalesRow(idx)}
+										>
+											<X />
+										</Button>
+									)}
 								</div>
 							</div>
 						);
@@ -370,6 +394,45 @@ export default function SalesForm({
 								<div className="flex justify-between text-sm">
 									<span>Computed Total</span>
 									<span>{showReadAbleCurrency(computedSaleTotal)}</span>
+								</div>
+								{watchTotalOverride !== "" && (
+									<div className="flex justify-between text-sm">
+										<span>Final Total</span>
+										<span>{showReadAbleCurrency(effectiveTotal)}</span>
+									</div>
+								)}
+								<div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+									<div>
+										<FormField
+											control={form.control}
+											name="paid"
+											render={({ field }) => (
+												<FormItem>
+													<FormLabel>Paid</FormLabel>
+													<FormControl>
+														<Input
+															type="number"
+															value={field.value}
+															onChange={(e) => field.onChange(e.target.value)}
+														/>
+													</FormControl>
+													<FormMessage />
+												</FormItem>
+											)}
+										/>
+									</div>
+									<div className="flex flex-col justify-end">
+										<div className="flex justify-between text-sm">
+											<span>Due</span>
+											<span>{showReadAbleCurrency(computedDue)}</span>
+										</div>
+									</div>
+									<div className="flex flex-col justify-end">
+										<div className="flex justify-between text-sm">
+											<span>Return</span>
+											<span>{showReadAbleCurrency(computedReturn)}</span>
+										</div>
+									</div>
 								</div>
 							</div>
 							<div className="col-span-1 sm:col-span-2">

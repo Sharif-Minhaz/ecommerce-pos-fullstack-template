@@ -81,7 +81,7 @@ export async function createPosPurchase(input: CreatePosPurchaseInput) {
 						{
 							url: "https://via.placeholder.com/600x400?text=Product",
 							imageKey: "placeholder/product",
-						} as any,
+						} as { url: string; imageKey: string },
 					],
 					isActive: true,
 				});
@@ -108,8 +108,20 @@ export async function createPosPurchase(input: CreatePosPurchaseInput) {
 		const totalAmount = finalSubtotal + vatAmount + deliveryCharge;
 		const paid = input.paid ?? 0;
 		const due = Math.max(0, totalAmount - paid);
+		const returnAmount = Math.max(0, paid - totalAmount);
+
+		const generatePurchaseNumber = () => {
+			const d = new Date();
+			const dateStr =
+				d.getFullYear().toString() +
+				(d.getMonth() + 1).toString().padStart(2, "0") +
+				d.getDate().toString().padStart(2, "0");
+			const randomStr = Math.random().toString(36).substring(2, 7).toUpperCase();
+			return `PUR-${dateStr}-${randomStr}`;
+		};
 
 		const purchase = await Purchase.create({
+			purchaseNumber: generatePurchaseNumber(),
 			items: resolvedItems,
 			subtotal,
 			discount,
@@ -126,6 +138,7 @@ export async function createPosPurchase(input: CreatePosPurchaseInput) {
 			},
 			paid,
 			due,
+			returnAmount,
 			notes: input.notes,
 			actualDeliveryDate: new Date(),
 		});

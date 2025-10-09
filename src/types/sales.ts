@@ -1,4 +1,4 @@
-import { Document, PopulatedDoc } from "mongoose";
+import { Document, PopulatedDoc, Types } from "mongoose";
 import { IUser } from "./user";
 import { IProduct } from "./product";
 import { ICoupon } from "./coupon";
@@ -67,6 +67,7 @@ export interface ISalesBase {
 	taxAmount?: number;
 	refundAmount?: number;
 	refundReason?: string;
+	returnAmount: number;
 	isPaid: boolean;
 	isDelivered: boolean;
 	isCancelled: boolean;
@@ -118,3 +119,39 @@ export type SalesOrderLite = {
 };
 
 export type VendorProductLite = { _id: string; title: string; price: number; stock: number };
+
+export interface ISalesData {
+	orderNumber: string;
+	orderName: string;
+	items: Array<{
+		product: Types.ObjectId;
+		quantity: number;
+		unitPrice: number;
+		totalPrice: number;
+	}>;
+	actualPrice: number;
+	deliveryCharge: number;
+	subtotal: number;
+	discount: number;
+	couponDiscount: number;
+	totalAmount: number;
+	paymentMethod: string;
+	status: string;
+	user: Types.ObjectId;
+	paid: number;
+	due: number;
+	taxAmount: number;
+	notes?: string;
+	isPaid: boolean;
+	isDelivered: boolean;
+	deliveryDetails?: {
+		name: string;
+		phone: string;
+		email: string;
+		address: string;
+		city: string;
+		postalCode: string;
+		country: string;
+	};
+	returnAmount: number;
+}

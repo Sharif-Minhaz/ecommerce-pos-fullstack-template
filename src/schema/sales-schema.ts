@@ -12,6 +12,7 @@ export const salesFormSchema = z.object({
 	discount: z.coerce.number().min(0).default(0),
 	taxAmount: z.coerce.number().min(0).default(0),
 	totalOverride: z.string().optional().or(z.literal("")),
+	paid: z.coerce.number().min(0).default(0),
 });
 
 export type SalesFormValues = z.infer<typeof salesFormSchema>;

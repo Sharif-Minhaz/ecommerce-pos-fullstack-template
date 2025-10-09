@@ -12,9 +12,7 @@ export const brandSchema = z.object({
 	nameBN: z.string().min(1, "Brand name in Bengali is required"),
 	description: z.string().min(1, "Description in English is required"),
 	descriptionBN: z.string().min(1, "Description in Bengali is required"),
-	image: z.any().refine((file) => file && file instanceof File, {
-		message: "Brand image is required",
-	}),
+	image: z.any().optional(),
 });
 
 export type QuickBrandValues = z.infer<typeof quickBrandSchema>;

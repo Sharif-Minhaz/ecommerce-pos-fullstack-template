@@ -67,7 +67,6 @@ export default async function BrandsPage() {
 							<div className="p-6 pt-0">
 								<div className="mb-4">
 									<h3 className="text-xl font-semibold text-gray-900 mb-1">{brand.name}</h3>
-									<p className="text-sm text-gray-500 mb-2">{brand.nameBN}</p>
 									<p className="text-gray-600 text-sm line-clamp-2">{brand.description}</p>
 								</div>
 

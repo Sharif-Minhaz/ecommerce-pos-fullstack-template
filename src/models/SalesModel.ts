@@ -221,6 +221,11 @@ const salesSchema = new Schema<ISales>(
 			min: [0, "Due amount cannot be negative"],
 			default: 0,
 		},
+		returnAmount: {
+			type: Number,
+			min: [0, "Return amount cannot be negative"],
+			default: 0,
+		},
 		notes: {
 			type: String,
 			trim: true,
@@ -358,7 +363,8 @@ salesSchema.methods.calculateTotals = function (this: ISales) {
 
 	this.subtotal = subtotal;
 	this.totalAmount = totalAmount;
-	this.due = totalAmount - this.paid;
+	this.due = Math.max(0, totalAmount - this.paid);
+	this.returnAmount = Math.max(0, this.paid - totalAmount);
 
 	return {
 		subtotal,
